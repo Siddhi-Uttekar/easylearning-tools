@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import Link from "next/link";
 import {
   IconDashboard,
   IconListDetails,
@@ -59,7 +60,7 @@ const data = {
     },
     {
       title: "Certificate Maker",
-      url: "/certificate-maker",
+      url: "/certificate",
       icon: IconIdBadge2,
     },
   ],
@@ -95,7 +96,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/" className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-3">
+                {" "}
+                {/* Changed a to Link */}
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <IconBook2 className="size-5" />
                 </div>
@@ -105,12 +108,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     Educational Suite
                   </span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-
       <SidebarContent>
         <NavMain items={data.navMain} />
         <SidebarSeparator className="mx-3" />
@@ -120,7 +122,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           className="mt-auto"
         />
       </SidebarContent>
-
       <SidebarFooter className="border-t border-sidebar-border pt-4">
         <NavUser user={data.user} />
         <SidebarSeparator className="mx-3 my-2" />
@@ -128,16 +129,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {data.footerActions.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton variant="outline" asChild>
-                <a href={item.url} className="text-muted-foreground">
+                <Link href={item.url} className="text-muted-foreground">
+                  {" "}
+                  {/* Changed a to Link */}
                   <item.icon className="mr-2" />
                   {item.title}
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarFooter>
-
       <SidebarRail />
     </Sidebar>
   );

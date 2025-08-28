@@ -10,16 +10,13 @@ export default function MCQGenerator() {
 
   const handleGenerate = async (e: FormEvent) => {
     e.preventDefault();
-
     if (!mcqText.trim()) {
       setError("Please enter MCQ content");
       return;
     }
-
     setIsLoading(true);
     setError("");
     setSuccess("");
-
     try {
       const response = await fetch("/api/mcq-to-docx", {
         method: "POST",
@@ -28,15 +25,12 @@ export default function MCQGenerator() {
         },
         body: JSON.stringify({ mcqText, filename }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to generate document");
       }
-
       // Get the blob from response
       const blob = await response.blob();
-
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -46,7 +40,6 @@ export default function MCQGenerator() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-
       setSuccess("Document generated successfully!");
     } catch (err) {
       setError(
@@ -72,18 +65,18 @@ export default function MCQGenerator() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
+          <h1 className="text-4xl font-extrabold text-foreground mb-4">
             MCQ Generator
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Create formatted Word documents from your multiple-choice questions
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-card rounded-xl shadow-lg overflow-hidden border">
           <div className="p-6 sm:p-8">
             <form onSubmit={handleGenerate}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -92,7 +85,7 @@ export default function MCQGenerator() {
                   <div className="mb-6">
                     <label
                       htmlFor="filename"
-                      className="block text-sm font-medium text-gray-700 mb-2"
+                      className="block text-sm font-medium text-foreground mb-2"
                     >
                       Document Filename
                     </label>
@@ -102,10 +95,10 @@ export default function MCQGenerator() {
                         id="filename"
                         value={filename}
                         onChange={handleFilenameChange}
-                        className=" text-black flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 px-4 py-2 border border-input rounded-l-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-input bg-background text-foreground"
                         placeholder="Enter filename"
                       />
-                      <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-black text-sm">
+                      <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground text-sm">
                         .docx
                       </span>
                     </div>
@@ -114,7 +107,7 @@ export default function MCQGenerator() {
                   <div className="mb-6">
                     <label
                       htmlFor="mcqText"
-                      className="block text-sm font-medium text-gray-900 mb-2"
+                      className="block text-sm font-medium text-foreground mb-2"
                     >
                       MCQ Content
                     </label>
@@ -123,9 +116,8 @@ export default function MCQGenerator() {
                       value={mcqText}
                       onChange={handleMcqTextChange}
                       rows={15}
-                      className="text-black w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                      className="w-full px-4 py-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-input bg-background text-foreground font-mono text-sm"
                       placeholder={`Enter MCQ content in the following format:
-
 [Q] What is the capital of France?
 [O] Paris
 [O] London
@@ -134,7 +126,6 @@ export default function MCQGenerator() {
 [A] A
 [S] Paris is the capital and most populous city of France.
 [M] 1
-
 [Q] Which planet is known as the Red Planet?
 [O] Venus
 [O] Mars
@@ -150,14 +141,14 @@ export default function MCQGenerator() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      className={`flex-1 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
                         isLoading ? "opacity-70 cursor-not-allowed" : ""
                       }`}
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center">
                           <svg
-                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-foreground"
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
@@ -185,17 +176,17 @@ export default function MCQGenerator() {
                     <button
                       type="button"
                       onClick={handleClear}
-                      className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                      className="px-6 py-3 bg-secondary text-secondary-foreground font-medium rounded-md hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     >
                       Clear
                     </button>
                   </div>
 
                   {error && (
-                    <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md">
+                    <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md border border-destructive/20">
                       <div className="flex">
                         <svg
-                          className="h-5 w-5 text-red-400 mr-2"
+                          className="h-5 w-5 text-destructive mr-2"
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
                           fill="currentColor"
@@ -212,10 +203,10 @@ export default function MCQGenerator() {
                   )}
 
                   {success && (
-                    <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-md">
+                    <div className="mt-4 p-4 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-md border border-green-200 dark:border-green-800/50">
                       <div className="flex">
                         <svg
-                          className="h-5 w-5 text-green-400 mr-2"
+                          className="h-5 w-5 text-green-600 dark:text-green-400 mr-2"
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
                           fill="currentColor"
@@ -233,94 +224,108 @@ export default function MCQGenerator() {
                 </div>
 
                 {/* Right Column - Instructions */}
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                <div className="bg-muted rounded-lg p-6 border">
+                  <h2 className="text-xl font-bold text-foreground mb-4">
                     Format Instructions
                   </h2>
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Enter your multiple-choice questions using the following
                     format:
                   </p>
 
                   <div className="space-y-4">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-3">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold mr-3">
                         1
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className="font-medium text-foreground">
                           Question Format
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                           Use{" "}
-                          <code className="bg-gray-200 px-1 rounded">[Q]</code>{" "}
+                          <code className="bg-muted px-1 rounded text-foreground">
+                            [Q]
+                          </code>{" "}
                           followed by the question text
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-3">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold mr-3">
                         2
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">Options</h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h3 className="font-medium text-foreground">Options</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                           Use{" "}
-                          <code className="bg-gray-200 px-1 rounded">[O]</code>{" "}
+                          <code className="bg-muted px-1 rounded text-foreground">
+                            [O]
+                          </code>{" "}
                           for each option
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-3">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold mr-3">
                         3
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className="font-medium text-foreground">
                           Correct Answer
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                           Use{" "}
-                          <code className="bg-gray-200 px-1 rounded">[A]</code>{" "}
+                          <code className="bg-muted px-1 rounded text-foreground">
+                            [A]
+                          </code>{" "}
                           followed by the option letter (A, B, C, etc.)
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-3">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold mr-3">
                         4
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">Solution</h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h3 className="font-medium text-foreground">
+                          Solution
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                           Use{" "}
-                          <code className="bg-gray-200 px-1 rounded">[S]</code>{" "}
+                          <code className="bg-muted px-1 rounded text-foreground">
+                            [S]
+                          </code>{" "}
                           for the solution explanation
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-3">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold mr-3">
                         5
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">Marks</h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h3 className="font-medium text-foreground">Marks</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                           Use{" "}
-                          <code className="bg-gray-200 px-1 rounded">[M]</code>{" "}
+                          <code className="bg-muted px-1 rounded text-foreground">
+                            [M]
+                          </code>{" "}
                           for the marks value
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-white rounded-md border border-gray-200">
-                    <h3 className="font-medium text-gray-900 mb-2">Example:</h3>
-                    <pre className="text-xs text-gray-600 overflow-x-auto">
+                  <div className="mt-6 p-4 bg-card rounded-md border border-border">
+                    <h3 className="font-medium text-foreground mb-2">
+                      Example:
+                    </h3>
+                    <pre className="text-xs text-muted-foreground overflow-x-auto">
                       {`[Q] What is the capital of France?
 [O] Paris
 [O] London
@@ -332,10 +337,10 @@ export default function MCQGenerator() {
                     </pre>
                   </div>
 
-                  <div className="mt-6 p-4 bg-yellow-50 rounded-md border border-yellow-200">
+                  <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-md border border-amber-200 dark:border-amber-800/50">
                     <div className="flex">
                       <svg
-                        className="h-5 w-5 text-yellow-400 mr-2"
+                        className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
                         fill="currentColor"
@@ -346,7 +351,7 @@ export default function MCQGenerator() {
                           clipRule="evenodd"
                         />
                       </svg>
-                      <span className="text-sm text-yellow-700">
+                      <span className="text-sm">
                         Separate each question with a blank line
                       </span>
                     </div>
@@ -357,7 +362,7 @@ export default function MCQGenerator() {
           </div>
         </div>
 
-        <div className="mt-8 text-center text-gray-500 text-sm">
+        <div className="mt-8 text-center text-muted-foreground text-sm">
           <p>
             Generated documents will be formatted as tables with three columns:
             Label | Value | Status
