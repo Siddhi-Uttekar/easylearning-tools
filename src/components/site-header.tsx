@@ -5,9 +5,11 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTheme } from "next-themes";
 import { IconMoon, IconSun, IconCamper } from "@tabler/icons-react";
+import { useHeaderStore } from "@/store/header-store";
 import { useEffect, useState } from "react";
 
 export function SiteHeader() {
+  const { title } = useHeaderStore();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -28,7 +30,7 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Dashboard</h1>
+        <h1 className="text-base font-medium">{title}</h1>
         <div className="ml-auto flex items-center gap-2">
           {/* Theme Toggle Dropdown */}
           <div className="relative group">

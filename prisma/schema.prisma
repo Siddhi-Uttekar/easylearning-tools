@@ -26,7 +26,10 @@ model User {
   accounts Account[]
   sessions Session[]
   otps Otp[]
-  
+  flashcardSets FlashcardSet[]
+  featureSuggestions FeatureSuggestion[]
+  comments Comment[]
+
   @@map("users")
 }
 
@@ -84,4 +87,61 @@ model Otp {
   
   @@index([phone])
   @@map("otps")
+}
+
+model FlashcardSet {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  thumbnailId     String?
+  createdBy       String
+  createdByName   String?
+  createdAt       DateTime  @default(now())
+  published       Boolean   @default(false)
+  flashcardsData  Json
+  flashcardCount  Int
+  standard        String
+  subject         String
+  
+  author          User      @relation(fields: [createdBy], references: [id])
+
+  @@map("flashcard_sets")
+}
+
+enum SuggestionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+model FeatureSuggestion {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  status      SuggestionStatus @default(PENDING)
+  upvotes     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+
+  @@map("feature_suggestions")
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  content     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+
+  suggestionId String
+  suggestion  FeatureSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
 }

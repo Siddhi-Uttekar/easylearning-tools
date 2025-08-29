@@ -1,4 +1,5 @@
 "use client";
+import { formatDistanceToNow } from "date-fns";
 import {
   Card,
   CardContent,
@@ -6,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useState } from "react";
+import { useHeaderStore } from "@/store/header-store";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,7 +45,7 @@ const tools = [
     color:
       "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
     features: ["AI-powered", "Export options", "Difficulty levels"],
-    url: "dashboard/mcq-generator",
+    url: "/dashboard/mcq-generator",
     badge: "Popular",
   },
   {
@@ -54,7 +56,7 @@ const tools = [
     color:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     features: ["Templates", "Auto-layout", "Media integration"],
-    url: "dashboard/ppt-generator",
+    url: "/dashboard/ppt-generator",
     badge: "New",
   },
   {
@@ -65,7 +67,7 @@ const tools = [
     color:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     features: ["Image support", "Spaced repetition", "Printable"],
-    url: "dashboard/flashcard",
+    url: "/dashboard/flashcard",
   },
   {
     id: "certificate",
@@ -74,7 +76,7 @@ const tools = [
     icon: IconIdBadge2,
     color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
     features: ["Custom templates", "QR codes", "Bulk generation"],
-    url: "dashboard/certificate-maker",
+    url: "/dashboard/certificate-maker",
   },
   {
     id: "analytics",
@@ -84,7 +86,7 @@ const tools = [
     color:
       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
     features: ["Detailed reports", "Progress tracking", "Insights"],
-    url: "dashboard/analytics",
+    url: "/dashboard/analytics",
   },
   {
     id: "resources",
@@ -93,55 +95,43 @@ const tools = [
     icon: IconFolder,
     color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
     features: ["Cloud storage", "Sharing", "Categorization"],
-    url: "dashboard/resources",
+    url: "/dashboard/resources",
   },
 ];
 
-// Recent activity data
-const recentActivity = [
-  {
-    id: 1,
-    title: "Created MCQ set for Biology",
-    time: "2 hours ago",
-    icon: IconFileText,
-  },
-  {
-    id: 2,
-    title: "Generated presentation on Photosynthesis",
-    time: "Yesterday",
-    icon: IconPhoto,
-  },
-  {
-    id: 3,
-    title: "Issued 15 certificates",
-    time: "2 days ago",
-    icon: IconCertificate,
-  },
-];
-
-// Upcoming events
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "Parent-Teacher Meeting",
-    date: "Tomorrow, 10:00 AM",
-    icon: IconUsers,
-  },
-  {
-    id: 2,
-    title: "Science Fair Preparation",
-    date: "May 15, 2:00 PM",
-    icon: IconBook2,
-  },
-  {
-    id: 3,
-    title: "Staff Training Session",
-    date: "May 20, 9:00 AM",
-    icon: IconPresentation,
-  },
-];
+interface FeatureSuggestion {
+  id: string;
+  title: string;
+  createdAt: string;
+  author: {
+    name: string;
+  };
+}
 
 export default function DashboardPage() {
+  const { setTitle } = useHeaderStore();
+  const [recentSuggestions, setRecentSuggestions] = useState<FeatureSuggestion[]>([]);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
+
+  useEffect(() => {
+    setTitle("Dashboard");
+
+    const fetchRecentSuggestions = async () => {
+      setIsActivityLoading(true);
+      try {
+        const res = await fetch("/api/suggestions");
+        const data: FeatureSuggestion[] = await res.json();
+        setRecentSuggestions(data.slice(0, 3)); // Get latest 3
+      } catch (error) {
+        console.error("Error fetching suggestions:", error);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    };
+
+    fetchRecentSuggestions();
+  }, [setTitle]);
+
   const [userName] = useState("Teacher");
 
   return (
@@ -175,7 +165,6 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="tools">Teaching Tools</TabsTrigger>
             <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-            <TabsTrigger value="events">Upcoming Events</TabsTrigger>
           </TabsList>
           <Button variant="outline" size="sm">
             View All Tools
@@ -236,70 +225,39 @@ export default function DashboardPage() {
               <CardDescription>Your latest teaching activities</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
-                  >
-                    <div className="flex items-center">
-                      <div className="mr-4 rounded-md bg-muted p-2">
-                        <activity.icon className="h-4 w-4" />
+              {isActivityLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <IconListDetails className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentSuggestions.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                    >
+                      <div className="flex items-center">
+                        <div className="mr-4 rounded-md bg-muted p-2">
+                          <IconSparkles className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium leading-none">
+                            {activity.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(activity.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {activity.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {activity.time}
-                        </p>
-                      </div>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href="/dashboard/suggestions">View</Link>
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="events" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Events</CardTitle>
-              <CardDescription>
-                Your scheduled activities and meetings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
-                  >
-                    <div className="flex items-center">
-                      <div className="mr-4 rounded-md bg-muted p-2">
-                        <event.icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {event.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center">
-                          <IconClock className="mr-1 h-3 w-3" />
-                          {event.date}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      Details
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

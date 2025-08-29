@@ -77,7 +77,7 @@ export const authOptions = {
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string;
         session.user.phone = token.phone as string;
       }

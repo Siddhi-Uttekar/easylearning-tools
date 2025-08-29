@@ -4,19 +4,12 @@ import Link from "next/link";
 import {
   IconDashboard,
   IconListDetails,
-  IconChartBar,
-  IconFolder,
-  IconUsers,
-  IconBook2,
-  IconPresentation,
   IconIdBadge2,
   IconCards,
-  IconSettings,
-  IconHelpCircle,
-  IconLogout,
+  IconMessageCircle,
+  IconBook2,
 } from "@tabler/icons-react";
 import { NavMain } from "@/components/nav-main";
-import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -26,7 +19,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
   SidebarRail,
 } from "@/components/ui/sidebar";
 
@@ -45,44 +37,37 @@ const data = {
     },
     {
       title: "MCQ Generator",
-      url: "/mcq-generator",
+      url: "/dashboard/mcq-generator",
       icon: IconListDetails,
     },
     {
-      title: "PPT Generator",
-      url: "/ppt-generator",
-      icon: IconPresentation,
-    },
-    {
       title: "Flashcards",
-      url: "/flashcards",
+      url: "/dashboard/flashcard",
       icon: IconCards,
+      subRoutes: [
+        {
+          title: "Create-Flashcard",
+          url: "/dashboard/flashcard/create-flashcard",
+        },
+        {
+          title: "Edit Flashcard",
+          url: "/dashboard/flashcard/edit-flashcard",
+        },
+      ],
     },
     {
       title: "Certificate Maker",
-      url: "/certificate",
+      url: "/dashboard/certificate",
       icon: IconIdBadge2,
     },
-  ],
-  navSecondary: [
     {
-      title: "Settings",
-      url: "/settings",
-      icon: IconSettings,
-    },
-    {
-      title: "Help & Support",
-      url: "/help",
-      icon: IconHelpCircle,
+      title: "Suggestions",
+      url: "/dashboard/suggestions",
+      icon: IconMessageCircle,
     },
   ],
-  footerActions: [
-    {
-      title: "Logout",
-      url: "/logout",
-      icon: IconLogout,
-    },
-  ],
+  navSecondary: [],
+  footerActions: [],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -115,30 +100,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <SidebarSeparator className="mx-3" />
-        <NavSecondary
-          items={data.navSecondary}
-          title="Account"
-          className="mt-auto"
-        />
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border pt-4">
         <NavUser user={data.user} />
-        <SidebarSeparator className="mx-3 my-2" />
-        <SidebarMenu>
-          {data.footerActions.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton variant="outline" asChild>
-                <Link href={item.url} className="text-muted-foreground">
-                  {" "}
-                  {/* Changed a to Link */}
-                  <item.icon className="mr-2" />
-                  {item.title}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
