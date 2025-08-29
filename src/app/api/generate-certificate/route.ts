@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         pngBuffer.byteOffset,
         pngBuffer.byteOffset + pngBuffer.byteLength
       );
-      return new NextResponse(arrayBuffer, {
+      return new NextResponse(arrayBuffer as ArrayBuffer, {
         headers: {
           "Content-Type": "image/png",
           "Content-Disposition": `attachment; filename="${fileName}.png"`,
@@ -33,7 +33,11 @@ export async function POST(req: NextRequest) {
       });
     } else {
       const pdfBuffer = await generatePDF(html);
-      return new NextResponse(pdfBuffer, {
+      const arrayBuffer = pdfBuffer.buffer.slice(
+        pdfBuffer.byteOffset,
+        pdfBuffer.byteOffset + pdfBuffer.byteLength
+      );
+      return new NextResponse(arrayBuffer as ArrayBuffer, {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition": `attachment; filename="${fileName}.pdf"`,

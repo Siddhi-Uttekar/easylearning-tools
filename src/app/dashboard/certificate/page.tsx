@@ -158,17 +158,17 @@ const BulkWhatsAppSender = () => {
   const downloadSampleCSV = () => {
     const sampleData = [
       {
-        name: "John Doe",
+        name: "Cristiano Ronaldo",
         rank: 1,
         testsAttempted: 15,
-        whatsappNumber: "+1234567890",
+        whatsappNumber: "+911234567890",
         medalType: "auto",
       },
       {
-        name: "Jane Smith",
+        name: "Leo Messi",
         rank: 2,
         testsAttempted: 12,
-        whatsappNumber: "+0987654321",
+        whatsappNumber: "911234567890",
         medalType: "auto",
       },
     ];
@@ -248,17 +248,19 @@ const BulkWhatsAppSender = () => {
 
         const blob = await response.blob();
 
-        // Send via WhatsApp (you'll need to implement this API endpoint)
+        // Send via WhatsApp
+        const formData = new FormData();
+        formData.append("phoneNumber", student.whatsappNumber);
+        formData.append("studentName", student.name);
+        formData.append(
+          "certificate",
+          blob,
+          `certificate-${student.name.replace(/\s+/g, "-").toLowerCase()}.pdf`
+        );
+
         const whatsappResponse = await fetch("/api/send-whatsapp", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phoneNumber: student.whatsappNumber,
-            studentName: student.name,
-            certificateBlob: await blob.arrayBuffer(),
-          }),
+          body: formData,
         });
 
         if (whatsappResponse.ok) {
@@ -376,7 +378,7 @@ const BulkWhatsAppSender = () => {
 
         {/* CSV Preview */}
         {csvData.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 ">
             <Label className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Preview ({csvData.length} students)
@@ -384,7 +386,7 @@ const BulkWhatsAppSender = () => {
             <div className="max-h-60 overflow-auto border rounded-lg">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
-                  <tr>
+                  <tr className="dark:text-secondary">
                     <th className="px-3 py-2 text-left">Name</th>
                     <th className="px-3 py-2 text-left">Rank</th>
                     <th className="px-3 py-2 text-left">Tests</th>
@@ -450,7 +452,7 @@ const BulkWhatsAppSender = () => {
             <div className="max-h-60 overflow-auto border rounded-lg">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
-                  <tr>
+                  <tr className="dark:text-secondary">
                     <th className="px-3 py-2 text-left">Name</th>
                     <th className="px-3 py-2 text-left">Status</th>
                     <th className="px-3 py-2 text-left">Message</th>
