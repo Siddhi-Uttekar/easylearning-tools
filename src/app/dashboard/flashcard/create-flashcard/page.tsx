@@ -140,9 +140,7 @@ export default function FlashcardCreator() {
             : "Flashcard set saved successfully!"
         );
 
-        router.push(
-          `/dashboard/flashcard/edit-flashcard/${newFlashcardSet.id}`
-        );
+        router.push(`/dashboard/flashcard/${newFlashcardSet.id}`);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
