@@ -1,7 +1,6 @@
 // verify-otp/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { RateLimiterMemory } from "rate-limiter-flexible";
-import { Redis } from "@upstash/redis";
 import prisma from "@/lib/prisma"; // Import Prisma client
 
 const rateLimiter = new RateLimiterMemory({
@@ -10,10 +9,6 @@ const rateLimiter = new RateLimiterMemory({
   duration: 60 * 15,
 });
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL!,
-  token: process.env.UPSTASH_REDIS_TOKEN!,
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,25 +20,10 @@ export async function POST(request: NextRequest) {
     try {
       await rateLimiter.consume(ip);
     } catch {
-      if (process.env.NODE_ENV === "production") {
-        const redisKey = `otp_verify:${ip}`;
-        const points = (await redis.get(redisKey)) as string | null;
-        if (points && parseInt(points, 10) >= 5) {
-          return NextResponse.json(
-            {
-              error: "Too many verification attempts. Please try again later.",
-            },
-            { status: 429 }
-          );
-        }
-        await redis.incr(redisKey);
-        await redis.expire(redisKey, 900);
-      } else {
-        return NextResponse.json(
-          { error: "Too many verification attempts. Please try again later." },
-          { status: 429 }
-        );
-      }
+      return NextResponse.json(
+        { error: "Too many verification attempts. Please try again later." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json();

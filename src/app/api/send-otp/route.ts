@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RateLimiterMemory } from "rate-limiter-flexible";
-import { Redis } from "@upstash/redis";
 import prisma from "@/lib/prisma";
 
 const rateLimiter = new RateLimiterMemory({
@@ -9,14 +8,6 @@ const rateLimiter = new RateLimiterMemory({
   duration: 60 * 15,
 });
 
-// Only initialize Redis in production
-const redis =
-  process.env.NODE_ENV === "production"
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_URL!,
-        token: process.env.UPSTASH_REDIS_TOKEN!,
-      })
-    : null;
 
 const sendOTPViaAisensy = async (phone: string, otp: string) => {
   // Skip actual SMS sending in non-production environments
@@ -74,24 +65,10 @@ export async function POST(request: NextRequest) {
     try {
       await rateLimiter.consume(ip);
     } catch {
-      // Only use Redis in production
-      if (process.env.NODE_ENV === "production" && redis) {
-        const redisKey = `otp_send:${ip}`;
-        const points = (await redis.get(redisKey)) as string | null;
-        if (points && parseInt(points, 10) >= 3) {
-          return NextResponse.json(
-            { error: "Too many OTP requests. Please try again later." },
-            { status: 429 }
-          );
-        }
-        await redis.incr(redisKey);
-        await redis.expire(redisKey, 900);
-      } else {
-        return NextResponse.json(
-          { error: "Too many OTP requests. Please try again later." },
-          { status: 429 }
-        );
-      }
+      return NextResponse.json(
+        { error: "Too many OTP requests. Please try again later." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json();
@@ -118,20 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only use Redis in production
-    if (process.env.NODE_ENV === "production" && redis) {
-      const recentOTPKey = `recent_otp:${formattedPhone}`;
-      const recentOTP = await redis.get(recentOTPKey);
-      if (recentOTP) {
-        return NextResponse.json(
-          {
-            error:
-              "OTP already sent recently. Please wait before requesting another.",
-          },
-          { status: 429 }
-        );
-      }
-    }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60000);
@@ -145,10 +108,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Only use Redis in production
-    if (process.env.NODE_ENV === "production" && redis) {
-      await redis.set(`recent_otp:${formattedPhone}`, "1", { ex: 120 });
-    }
 
     // In development, show the OTP in the response
     if (process.env.NODE_ENV !== "production") {

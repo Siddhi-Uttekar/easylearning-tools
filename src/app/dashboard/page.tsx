@@ -34,7 +34,11 @@ const tools = [
     icon: IconListDetails,
     color:
       "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-    features: ["AI-powered", "Export options", "Difficulty levels"],
+    features: [
+      "AI-powered Question Generation",
+      "Export to DOCX & PPTX",
+      "Manual & Bulk Creation",
+    ],
     url: "/dashboard/mcq-generator",
     badge: "Popular",
   },
@@ -46,7 +50,7 @@ const tools = [
     color:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     features: ["Templates", "Auto-layout", "Media integration"],
-    url: "/dashboard/ppt-generator",
+    url: "/dashboard/mcq-generator",
     badge: "New",
   },
   {
@@ -56,7 +60,7 @@ const tools = [
     icon: IconCards,
     color:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-    features: ["Image support", "Spaced repetition", "Printable"],
+    features: ["Image Support", "PDF to Flashcard", "Easy to create"],
     url: "/dashboard/flashcard",
   },
   {
@@ -65,8 +69,8 @@ const tools = [
     description: "Design and issue certificates of achievement",
     icon: IconIdBadge2,
     color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-    features: ["Custom templates", "QR codes", "Bulk generation"],
-    url: "/dashboard/certificate-maker",
+    features: ["Custom Templates", "WhatsApp Integration", "Bulk Generation"],
+    url: "/dashboard/certificate",
   },
   {
     id: "analytics",
@@ -76,7 +80,8 @@ const tools = [
     color:
       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
     features: ["Detailed reports", "Progress tracking", "Insights"],
-    url: "/dashboard/analytics",
+    url: "/",
+    badge: "Coming Soon",
   },
   {
     id: "resources",
@@ -85,7 +90,8 @@ const tools = [
     icon: IconFolder,
     color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
     features: ["Cloud storage", "Sharing", "Categorization"],
-    url: "/dashboard/resources",
+    url: "/",
+    badge: "Coming Soon",
   },
 ];
 
@@ -100,7 +106,9 @@ interface FeatureSuggestion {
 
 export default function DashboardPage() {
   const { setTitle } = useHeaderStore();
-  const [recentSuggestions, setRecentSuggestions] = useState<FeatureSuggestion[]>([]);
+  const [recentSuggestions, setRecentSuggestions] = useState<
+    FeatureSuggestion[]
+  >([]);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
 
   useEffect(() => {
@@ -142,10 +150,12 @@ export default function DashboardPage() {
               <IconBell className="mr-2 h-4 w-4" />
               Notifications
             </Button>
-            <Button size="sm">
-              <IconSparkles className="mr-2 h-4 w-4" />
-              New Tool
-            </Button>
+            <Link href="/dashboard/suggestions">
+              <Button size="sm">
+                <IconSparkles className="mr-2 h-4 w-4" />
+                New Tool
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

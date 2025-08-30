@@ -450,8 +450,44 @@ ${question.options
 
   // Handle PPT generation
   const handleGeneratePPT = async () => {
-    if (selectedQuestions.length === 0) {
-      setPptError("Please select at least one question");
+    let questionsToGenerate: Question[] = [];
+    const sourceChapter = selectedChapters.length > 0 ? selectedChapters[0] : null;
+
+    if (parsedQuestions.length > 0) {
+      questionsToGenerate = parsedQuestions.map((pq, index) => {
+        const correctLetter = pq.answer.trim().charAt(0).toUpperCase();
+
+        const options: Option[] = pq.options.map((optText, optIndex) => {
+          const optionLetter = String.fromCharCode(65 + optIndex);
+          // Check if the answer string starts with this option's letter
+          const isCorrect = correctLetter === optionLetter;
+
+          return {
+            option_id: -(index * 10 + optIndex), // Negative ID for uniqueness
+            option_text: optText.replace(/^[A-Z][.)]\s*/, ""), // Clean the option text
+            is_correct: isCorrect,
+          };
+        });
+
+        return {
+          question_id: -(index + 1),
+          question_text: pq.question,
+          solution: pq.solution,
+          difficulty_level: "medium", // Default for manual
+          chapter_name: sourceChapter ? sourceChapter.name : "Manual Input",
+          subject: sourceChapter ? sourceChapter.subject : "Mixed",
+          standard: sourceChapter ? sourceChapter.standard : "0",
+          options,
+        };
+      });
+    } else {
+      questionsToGenerate = selectedQuestions;
+    }
+
+    if (questionsToGenerate.length === 0) {
+      setPptError(
+        "No questions to generate. Select from a chapter or enter manually."
+      );
       return;
     }
 
@@ -461,16 +497,13 @@ ${question.options
 
     try {
       const metadata = {
-        chapter:
-          selectedChapters.length > 0 ? selectedChapters[0].name : "Mixed",
-        subject:
-          selectedChapters.length > 0 ? selectedChapters[0].subject : "Mixed",
-        standard:
-          selectedChapters.length > 0 ? selectedChapters[0].standard : "Mixed",
-        username: "User", // Replace with actual username if available
+        chapter: sourceChapter ? sourceChapter.name : "Manual Input",
+        subject: sourceChapter ? sourceChapter.subject : "Mixed",
+        standard: sourceChapter ? sourceChapter.standard : "N/A",
+        username: "User",
         difficultyFilters:
           difficultyFilter === "all" ? "EMH" : difficultyFilter.toUpperCase(),
-        totalCount: selectedQuestions.length,
+        totalCount: questionsToGenerate.length,
       };
 
       const response = await fetch("/api/generate-ppt", {
@@ -479,7 +512,7 @@ ${question.options
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          questions: selectedQuestions,
+          questions: questionsToGenerate,
           metadata,
         }),
       });
@@ -489,14 +522,12 @@ ${question.options
         throw new Error(errorData.error || "Failed to generate PowerPoint");
       }
 
-      // Get the blob from response
       const blob = await response.blob();
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = url;
-      a.download = `${metadata.chapter}_${selectedQuestions.length}Q_${metadata.difficultyFilters}_EasyLearning.pptx`;
+      a.download = `${metadata.chapter}_${questionsToGenerate.length}Q_${metadata.difficultyFilters}_EasyLearning.pptx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -1061,7 +1092,8 @@ ${question.options
                     <Button
                       onClick={handleGeneratePPT}
                       disabled={
-                        isGeneratingPPT || selectedQuestions.length === 0
+                        isGeneratingPPT ||
+                        (selectedQuestions.length === 0 && parsedQuestions.length === 0)
                       }
                       variant="outline"
                     >

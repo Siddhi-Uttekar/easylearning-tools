@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconDashboard,
   IconListDetails,
@@ -40,6 +41,12 @@ const data = {
       title: "MCQ Generator",
       url: "/dashboard/mcq-generator",
       icon: IconListDetails,
+      subRoutes: [
+        {
+          title: "PPT Generator",
+          url: "/dashboard/mcq-generator",
+        },
+      ],
     },
     {
       title: "Flashcards",
@@ -61,6 +68,7 @@ const data = {
       url: "/dashboard/certificate",
       icon: IconIdBadge2,
     },
+
     {
       title: "Suggestions",
       url: "/dashboard/suggestions",
@@ -85,13 +93,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <Link href="/" className="flex items-center gap-3">
                 {" "}
                 {/* Changed a to Link */}
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <IconBook2 className="size-5" />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-white text-primary-foreground">
+                  <Image src="/image.png" alt="Logo" width={24} height={24} />
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="font-semibold">Teacher Tools</span>
+                  <span className="font-semibold">EasyLearning</span>
                   <span className="text-xs font-medium text-muted-foreground">
-                    Educational Suite
+                    Teacher Tools
                   </span>
                 </div>
               </Link>

@@ -10,15 +10,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Save,
   Upload,
-  LogOut,
   Presentation,
   CheckCircle,
   BookOpen,
-  FileImage,
   Settings,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { signOut } from "next-auth/react";
 import PPTProcessor from "./PPTuploader";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -66,7 +63,7 @@ const hscSubjects = [
 
 export default function FlashcardCreator() {
   const router = useRouter();
-  const { data: session } = useSession();
+  useSession();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
@@ -164,14 +161,6 @@ export default function FlashcardCreator() {
       router,
     ]
   );
-  const handleLogout = useCallback(async () => {
-    try {
-      await signOut({ callbackUrl: "/" });
-      toast.success("Logged out successfully");
-    } catch {
-      toast.error("Failed to logout");
-    }
-  }, []);
   const getSubjectOptions = () => {
     if (standard === "9th" || standard === "10th") return sscSubjects;
     if (standard === "11th-sci" || standard === "12th-sci") return hscSubjects;

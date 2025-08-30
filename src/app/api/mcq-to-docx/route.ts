@@ -18,6 +18,73 @@ interface ImageData {
   type: string;
 }
 
+function cleanLatex(text: string): string {
+  if (!text || typeof text !== "string") {
+    return "";
+  }
+  return text
+    .replace(/\$\$([^$]+)\$\$/g, "$1")
+    .replace(/\$([^$]+)\$/g, "$1")
+    .replace(/\\hat\{([^}]+)\}/g, "$1̂")
+    .replace(/\\overset\{\\to\s*\}\{\\mathop\{([^}]+)\}\\,\}/g, "$1⃗")
+    .replace(/\\mathop\{([^}]+)\}/g, "$1")
+    .replace(/\\,/g, " ")
+    .replace(/&there4;/g, "∴")
+    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+    .replace(/\{\{([^}]+)\}\}/g, "$1")
+    .replace(/\\hat\{([^}]+)\}/g, "$1̂")
+    .replace(/\^2/g, "²")
+    .replace(/\^3/g, "³")
+    .replace(
+      /\^([0-9])/g,
+      (_, p1) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number.parseInt(p1)] || "^" + p1
+    )
+    .replace(/_{([^}]+)}/g, "₍$1₎")
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
+    .replace(/\\times/g, "×")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\pm/g, "±")
+    .replace(/\\alpha/g, "α")
+    .replace(/\\beta/g, "β")
+    .replace(/\\gamma/g, "γ")
+    .replace(/\\delta/g, "δ")
+    .replace(/\\theta/g, "θ")
+    .replace(/\\pi/g, "π")
+    .replace(/\\omega/g, "ω")
+    .replace(/\\Omega/g, "Ω")
+    .replace(/\\mu/g, "μ")
+    .replace(/\\sigma/g, "σ")
+    .replace(/\\lambda/g, "λ")
+    .replace(/\\phi/g, "φ")
+    .replace(/\\psi/g, "ψ")
+    .replace(/\\chi/g, "χ")
+    .replace(/\\rho/g, "ρ")
+    .replace(/\\tau/g, "τ")
+    .replace(/\\epsilon/g, "ε")
+    .replace(/\\zeta/g, "ζ")
+    .replace(/\\eta/g, "η")
+    .replace(/\\kappa/g, "κ")
+    .replace(/\\nu/g, "ν")
+    .replace(/\\xi/g, "ξ")
+    .replace(/\\upsilon/g, "υ")
+    .replace(/\\leq/g, "≤")
+    .replace(/\\geq/g, "≥")
+    .replace(/\\neq/g, "≠")
+    .replace(/\\approx/g, "≈")
+    .replace(/\\equiv/g, "≡")
+    .replace(/\\propto/g, "∝")
+    .replace(/\\infty/g, "∞")
+    .replace(/\\partial/g, "∂")
+    .replace(/\\nabla/g, "∇")
+    .replace(/\\int/g, "∫")
+    .replace(/\\sum/g, "∑")
+    .replace(/\\prod/g, "∏")
+    .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1")
+    .replace(/\\[a-zA-Z]+/g, "")
+    .replace(/\{([^}]*)\}/g, "$1")
+    .trim();
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { mcqText, filename } = (await request.json()) as {
@@ -334,13 +401,15 @@ function parseManualMCQ(mcqText: string): Question[] {
 
     for (const line of lines) {
       if (line.toUpperCase().startsWith("[Q]"))
-        q.question = line.substring(3).trim();
+        q.question = cleanLatex(line.substring(3).trim());
       else if (line.toUpperCase().startsWith("[O]"))
-        q.options.push([line.substring(3).trim(), "incorrect"]);
+        q.options.push([cleanLatex(line.substring(3).trim()), "incorrect"]);
       else if (line.toUpperCase().startsWith("[A]"))
-        answer = line.substring(3).trim();
+        answer = cleanLatex(line.substring(3).trim());
       else if (line.toUpperCase().startsWith("[S]"))
-        q.solution = line.substring(3).trim();
+        q.solution = cleanLatex(line.substring(3).trim());
+      else if (line.toUpperCase().startsWith("[E]"))
+        q.solution = cleanLatex(line.substring(3).trim());
       else if (line.toUpperCase().startsWith("[M]"))
         q.marks = parseInt(line.substring(3).trim()) || 1;
     }

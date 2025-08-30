@@ -247,7 +247,7 @@ function extractImagesAndCleanContent(html: string | null | undefined): {
 
 // Function to add images to slide
 async function addImagesToSlide(
-  slide: any,
+  slide: PptxGenJS.Slide,
   images: Array<{ src: string; alt?: string }>,
   startX: number,
   startY: number,
