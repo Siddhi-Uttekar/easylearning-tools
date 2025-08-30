@@ -548,7 +548,7 @@ function tc(
   const jc = align !== "left" ? `<w:jc w:val="${align}"/>` : "";
 
   // Add color for correct/incorrect status
-  let rPr = bold ? "<w:rPr><w:b/></w:rPr>" : "<w:rPr/>";
+  const rPr = bold ? "<w:rPr><w:b/></w:rPr>" : "<w:rPr/>";
 
   const margins =
     '<w:tcMar><w:top w:w="120"/><w:left w:w="120"/><w:bottom w:w="120"/><w:right w:w="120"/></w:tcMar>';
