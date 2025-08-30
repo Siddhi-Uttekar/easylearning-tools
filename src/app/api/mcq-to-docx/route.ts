@@ -438,7 +438,6 @@ function parseManualMCQ(mcqText: string): Question[] {
 // Modified createDocumentXml to handle images
 function createDocumentXml(questions: Question[], images: ImageData[]): string {
   let bodyXml = "";
-  let imageRelId = 2; // Start after styles relationship
 
   for (const q of questions) {
     // Table properties
@@ -466,13 +465,8 @@ function createDocumentXml(questions: Question[], images: ImageData[]): string {
       2,
       false,
       "left",
-      images,
-      imageRelId
+      images
     )}</w:tr>`;
-
-    // Update imageRelId if any images were added
-    const imageCount = (q.question.match(/\[Image: image\d+\]/g) || []).length;
-    imageRelId += imageCount;
 
     rows += `<w:tr>${tc("Type", 1, true)}${tc(
       q.type,
@@ -482,20 +476,14 @@ function createDocumentXml(questions: Question[], images: ImageData[]): string {
     )}</w:tr>`;
 
     for (let i = 0; i < q.options.length; i++) {
+      const status = q.options[i][1] === "correct" ? "Correct" : "Incorrect";
       rows += `<w:tr>${tc("Option " + (i + 1), 1, true)}${tc(
         q.options[i][0],
         1,
         false,
         "left",
-        images,
-        imageRelId
-      )}${tc(q.options[i][1], 1, false, "left")}</w:tr>`;
-
-      // Update imageRelId if any images were added
-      const optionImageCount = (
-        q.options[i][0].match(/\[Image: image\d+\]/g) || []
-      ).length;
-      imageRelId += optionImageCount;
+        images
+      )}${tc(status, 1, false, "left")}</w:tr>`;
     }
 
     rows += `<w:tr>${tc("Solution", 1, true)}${tc(
@@ -503,14 +491,8 @@ function createDocumentXml(questions: Question[], images: ImageData[]): string {
       2,
       false,
       "left",
-      images,
-      imageRelId
+      images
     )}</w:tr>`;
-
-    // Update imageRelId if any images were added
-    const solutionImageCount = (q.solution.match(/\[Image: image\d+\]/g) || [])
-      .length;
-    imageRelId += solutionImageCount;
 
     rows += `<w:tr>${tc("Marks", 1, true)}${tc(
       String(q.marks),
@@ -560,12 +542,14 @@ function tc(
   gridSpan: number = 1,
   bold: boolean = false,
   align: string = "left",
-  images: ImageData[] = [],
-  startRelId: number = 2
+  images: ImageData[] = []
 ): string {
   const span = gridSpan > 1 ? `<w:gridSpan w:val="${gridSpan}"/>` : "";
   const jc = align !== "left" ? `<w:jc w:val="${align}"/>` : "";
-  const rPr = bold ? "<w:rPr><w:b/></w:rPr>" : "";
+
+  // Add color for correct/incorrect status
+  let rPr = bold ? "<w:rPr><w:b/></w:rPr>" : "<w:rPr/>";
+
   const margins =
     '<w:tcMar><w:top w:w="120"/><w:left w:w="120"/><w:bottom w:w="120"/><w:right w:w="120"/></w:tcMar>';
   const borders = `<w:tcBorders>
@@ -576,60 +560,64 @@ function tc(
   </w:tcBorders>`;
 
   // Process text to include images
-  let processedText = escapeXml(text);
-  let currentRelId = startRelId;
-
-  // Replace image placeholders with actual image references
   const imageRegex = /\[Image: (image\d+)\]/g;
-  let match;
-  let imageElements = "";
+  const parts = text.split(imageRegex);
 
-  while ((match = imageRegex.exec(text)) !== null) {
-    const imageId = match[1];
-    const image = images.find((img) => img.id === imageId);
+  let contentXml = "";
+  let imageRelIdCounter = 2; // Starting relId for images
 
-    if (image) {
-      // Remove the placeholder from the text
-      processedText = processedText.replace(match[0], "");
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      // It's a text part
+      if (parts[i]) {
+        contentXml += `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(
+          parts[i]
+        )}</w:t></w:r>`;
+      }
+    } else {
+      // It's an image ID
+      const imageId = `image${i / 2 + 1}`;
+      const image = images.find((img) => img.id === imageId);
 
-      // Add image element
-      imageElements += `<w:r>
-        <w:rPr/>
-        <w:drawing>
-          <wp:inline distT="0" distB="0" distL="0" distR="0">
-            <wp:extent cx="914400" cy="685800"/>
-            <wp:effectExtent l="0" t="0" r="0" b="0"/>
-            <wp:docPr id="${currentRelId}" name="${imageId}"/>
-            <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                  <pic:nvPicPr>
-                    <pic:cNvPr id="0" name="${imageId}"/>
-                    <pic:cNvPicPr/>
-                  </pic:nvPicPr>
-                  <pic:blipFill>
-                    <a:blip r:embed="rId${currentRelId}"/>
-                    <a:stretch>
-                      <a:fillRect/>
-                    </a:stretch>
-                  </pic:blipFill>
-                  <pic:spPr>
-                    <a:xfrm>
-                      <a:off x="0" y="0"/>
-                      <a:ext cx="914400" cy="685800"/>
-                    </a:xfrm>
-                    <a:prstGeom prst="rect">
-                      <a:avLst/>
-                    </a:prstGeom>
-                  </pic:spPr>
-                </pic:pic>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>`;
-
-      currentRelId++;
+      if (image) {
+        const relId = `rId${imageRelIdCounter++}`;
+        contentXml += `<w:r>
+          <w:drawing>
+            <wp:inline distT="0" distB="0" distL="0" distR="0">
+              <wp:extent cx="914400" cy="685800"/>
+              <wp:effectExtent l="0" t="0" r="0" b="0"/>
+              <wp:docPr id="${
+                imageRelIdCounter - 2
+              }" name="${imageId}"/>
+              <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+                <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                  <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                    <pic:nvPicPr>
+                      <pic:cNvPr id="0" name="${imageId}"/>
+                      <pic:cNvPicPr/>
+                    </pic:nvPicPr>
+                    <pic:blipFill>
+                      <a:blip r:embed="${relId}"/>
+                      <a:stretch>
+                        <a:fillRect/>
+                      </a:stretch>
+                    </pic:blipFill>
+                    <pic:spPr>
+                      <a:xfrm>
+                        <a:off x="0" y="0"/>
+                        <a:ext cx="914400" cy="685800"/>
+                      </a:xfrm>
+                      <a:prstGeom prst="rect">
+                        <a:avLst/>
+                      </a:prstGeom>
+                    </pic:spPr>
+                  </pic:pic>
+                </a:graphicData>
+              </a:graphic>
+            </wp:inline>
+          </w:drawing>
+        </w:r>`;
+      }
     }
   }
 
@@ -637,8 +625,7 @@ function tc(
     <w:tcPr>${span}${borders}${margins}</w:tcPr>
     <w:p>
       <w:pPr>${jc}</w:pPr>
-      <w:r>${rPr}<w:t xml:space="preserve">${processedText}</w:t></w:r>
-      ${imageElements}
+      ${contentXml}
     </w:p>
   </w:tc>`;
 }

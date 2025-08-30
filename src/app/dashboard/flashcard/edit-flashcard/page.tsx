@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useHeaderStore } from "@/store/header-store";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -180,10 +181,11 @@ export default function EditFlashcardPage() {
             {/* Thumbnail Section */}
             <div className="h-40 bg-muted relative overflow-hidden rounded-t-xl">
               {set.thumbnail ? (
-                <img
+                <Image
                   src={`/uploads/${set.thumbnail}`}
                   alt={set.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">

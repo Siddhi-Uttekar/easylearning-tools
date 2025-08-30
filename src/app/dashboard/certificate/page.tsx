@@ -171,14 +171,14 @@ const BulkWhatsAppSender = () => {
         name: "Cristiano Ronaldo",
         rank: 1,
         testsAttempted: 15,
-        whatsappNumber: "+911234567890",
+        whatsappNumber: "9876543210",
         medalType: "auto",
       },
       {
         name: "Leo Messi",
         rank: 2,
         testsAttempted: 12,
-        whatsappNumber: "911234567890",
+        whatsappNumber: "9876543210",
         medalType: "auto",
       },
     ];
@@ -240,37 +240,21 @@ const BulkWhatsAppSender = () => {
           },
         };
 
-        // Generate certificate
-        const response = await fetch("/api/generate-certificate", {
+        const requestBody = {
+          data: certificateData,
+          destination: student.whatsappNumber,
+        };
+        console.log(
+          "Sending to /api/send-whatsapp:",
+          JSON.stringify(requestBody, null, 2)
+        );
+        // Send via WhatsApp
+        const whatsappResponse = await fetch("/api/send-whatsapp", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            data: certificateData,
-            format: "pdf",
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to generate certificate");
-        }
-
-        const blob = await response.blob();
-
-        // Send via WhatsApp
-        const formData = new FormData();
-        formData.append("phoneNumber", student.whatsappNumber);
-        formData.append("studentName", student.name);
-        formData.append(
-          "certificate",
-          blob,
-          `certificate-${student.name.replace(/\s+/g, "-").toLowerCase()}.pdf`
-        );
-
-        const whatsappResponse = await fetch("/api/send-whatsapp", {
-          method: "POST",
-          body: formData,
+          body: JSON.stringify(requestBody),
         });
 
         if (whatsappResponse.ok) {
@@ -656,7 +640,14 @@ export default function CertificateGenerator() {
                     <Label htmlFor="medalType">Medal Type</Label>
                     <Select
                       value={medalType}
-                      onValueChange={(value: "auto" | "gold" | "silver" | "bronze" | "participation") => setMedalType(value)}
+                      onValueChange={(
+                        value:
+                          | "auto"
+                          | "gold"
+                          | "silver"
+                          | "bronze"
+                          | "participation"
+                      ) => setMedalType(value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select medal type" />

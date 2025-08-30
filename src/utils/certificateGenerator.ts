@@ -1,66 +1,9 @@
-// app/api/generate-certificate/route.ts
+// src/utils/certificateGenerator.ts
 import puppeteer from "puppeteer";
 import { CertificateData } from "@/types/certificates";
 import { formatDate } from "@/utils/certificateUtils";
-import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { data, format } = (await req.json()) as {
-      data: CertificateData;
-      format: "png" | "pdf";
-    };
-
-    if (!data || !format) {
-      return NextResponse.json(
-        { error: "Missing data or format" },
-        { status: 400 }
-      );
-    }
-
-    const html = generateCertificateHTML(data);
-    const fileName = `certificate-${data.student.name
-      .replace(/\s+/g, "-")
-      .toLowerCase()}`;
-
-    if (format === "png") {
-      const pngBuffer = await generatePNG(html);
-      const arrayBuffer = pngBuffer.buffer.slice(
-        pngBuffer.byteOffset,
-        pngBuffer.byteOffset + pngBuffer.byteLength
-      );
-      return new NextResponse(arrayBuffer as ArrayBuffer, {
-        headers: {
-          "Content-Type": "image/png",
-          "Content-Disposition": `attachment; filename="${fileName}.png"`,
-        },
-      });
-    } else {
-      const pdfBuffer = await generatePDF(html);
-      const arrayBuffer = pdfBuffer.buffer.slice(
-        pdfBuffer.byteOffset,
-        pdfBuffer.byteOffset + pdfBuffer.byteLength
-      );
-      return new NextResponse(arrayBuffer as ArrayBuffer, {
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="${fileName}.pdf"`,
-        },
-      });
-    }
-  } catch (error) {
-    console.error("Error generating certificate:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to generate certificate",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
-
-function generateCertificateHTML(data: CertificateData): string {
+export function generateCertificateHTML(data: CertificateData): string {
   const { student, event } = data;
   const getMedalEmoji = () => {
     if (student.medalType === "gold") return "🥇";
@@ -115,7 +58,6 @@ function generateCertificateHTML(data: CertificateData): string {
           bottom: 32px;
           border-radius: 16px;
           border: 3px solid rgba(11,130,182,0.12);
-          z-index: 10; /* Ensure border is on top */
         }
         
         .ribbon {
@@ -126,7 +68,6 @@ function generateCertificateHTML(data: CertificateData): string {
           height: 120px;
           background: linear-gradient(to bottom, rgba(14,165,233,0.18), rgba(255,255,255,0));
           border-bottom: 1px solid #dfeefe;
-          z-index: 5;
         }
         
         .logo-container {
@@ -137,7 +78,6 @@ function generateCertificateHTML(data: CertificateData): string {
           display: flex;
           align-items: center;
           gap: 16px;
-          z-index: 6;
         }
         
         .logo {
@@ -186,7 +126,6 @@ function generateCertificateHTML(data: CertificateData): string {
           align-items: center;
           justify-content: center;
           gap: 40px;
-          z-index: 6;
         }
         
         .title {
@@ -203,16 +142,16 @@ function generateCertificateHTML(data: CertificateData): string {
         }
         
         .event-name {
-          font-size: 28px;
+          font-size: 28px; /* Increased from 18px */
           font-weight: bold;
-          letter-spacing: 4px;
+          letter-spacing: 4px; /* Reduced from 6px for better readability */
           text-transform: uppercase;
-          color: #0c4a6e;
-          text-shadow: 0px 1px 2px rgba(0,0,0,0.1);
-          padding: 8px 16px;
-          border-radius: 8px;
-          background-color: rgba(14, 165, 233, 0.1);
-          display: inline-block;
+          color: #0c4a6e; /* Darker blue for more contrast */
+          text-shadow: 0px 1px 2px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+          padding: 8px 16px; /* Added padding */
+          border-radius: 8px; /* Rounded corners */
+          background-color: rgba(14, 165, 233, 0.1); /* Light blue background */
+          display: inline-block; /* To contain the background */
         }
         
         .awarded-to {
@@ -288,20 +227,19 @@ function generateCertificateHTML(data: CertificateData): string {
         
         .footer-image {
           position: absolute;
-          bottom: 32px; /* Changed from 40px to touch the inner border */
+          bottom: 40px;
           left: 50%;
           transform: translateX(-50%);
-          width: 85%; /* Increased width */
-          max-height: 280px; /* Increased height */
+          width: 80%;
+          max-height: 200px;
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 4; /* Below the inner border */
         }
         
         .footer-image img {
-          width: 100%;
-          height: 100%;
+          max-width: 100%;
+          max-height: 200px;
           object-fit: contain;
         }
       </style>
@@ -351,7 +289,7 @@ function generateCertificateHTML(data: CertificateData): string {
             </div>
             <div class="metadata-item">
               <span>📅</span>
-              <span>${formatDate(event.date)}</span>
+              <span>${formatDate(new Date(event.date))}</span>
             </div>
           </div>
         </div>
@@ -365,16 +303,12 @@ function generateCertificateHTML(data: CertificateData): string {
   `;
 }
 
-async function generatePDF(html: string): Promise<Buffer> {
+export async function generatePDF(html: string): Promise<Buffer> {
   let browser;
   try {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? "/snap/bin/chromium"
-          : undefined,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -391,16 +325,12 @@ async function generatePDF(html: string): Promise<Buffer> {
   }
 }
 
-async function generatePNG(html: string): Promise<Buffer> {
+export async function generatePNG(html: string): Promise<Buffer> {
   let browser;
   try {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? "/snap/bin/chromium"
-          : undefined,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
