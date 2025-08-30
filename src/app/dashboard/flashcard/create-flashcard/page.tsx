@@ -21,6 +21,7 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import PPTProcessor from "./PPTuploader";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface ExtractedSlide {
+  slideNumber: number;
+  dataUrl: string;
+  type: "title" | "front" | "back";
+}
 
 const standards = [
   { value: "9th", label: "9th (SSC)" },
@@ -62,8 +69,8 @@ export default function FlashcardCreator() {
   const { data: session } = useSession();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-    const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
-  const [extractedSlides, setExtractedSlides] = useState<any[]>([]);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
+  const [extractedSlides, setExtractedSlides] = useState<ExtractedSlide[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [standard, setStandard] = useState("");
   const [subject, setSubject] = useState("");
@@ -73,7 +80,7 @@ export default function FlashcardCreator() {
       const file = event.target.files?.[0];
       if (file) {
         if (file.type.startsWith("image/")) {
-                    const reader = new FileReader();
+          const reader = new FileReader();
           reader.onload = (e) => {
             setThumbnailPreview(e.target?.result as string);
           };
@@ -136,7 +143,9 @@ export default function FlashcardCreator() {
             : "Flashcard set saved successfully!"
         );
 
-        router.push(`/dashboard/flashcard/edit-flashcard/${newFlashcardSet.id}`);
+        router.push(
+          `/dashboard/flashcard/edit-flashcard/${newFlashcardSet.id}`
+        );
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
@@ -149,7 +158,6 @@ export default function FlashcardCreator() {
       title,
       description,
       thumbnailPreview,
-      session,
       standard,
       subject,
       extractedSlides,
@@ -189,29 +197,6 @@ export default function FlashcardCreator() {
                 Upload presentation to extract flashcard images
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-3 bg-card border border-border rounded-xl p-3 shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-lg font-bold shadow-md">
-                {session?.user?.name?.charAt(0).toUpperCase() || "U"}
-              </div>
-              <div>
-                <span className="font-medium">
-                  {session?.user?.name || "User"}
-                </span>
-                <p className="text-xs text-muted-foreground">
-                  {session?.user?.email || "user@example.com"}
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="border-border"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
           </div>
         </div>
       </div>
@@ -265,9 +250,11 @@ export default function FlashcardCreator() {
                           exit={{ opacity: 0, scale: 0.8 }}
                           className="relative"
                         >
-                          <img
+                          <Image
                             src={thumbnailPreview}
                             alt="Thumbnail preview"
+                            width={64}
+                            height={64}
                             className="w-16 h-16 object-cover rounded-lg border border-border"
                           />
                           <div className="absolute -top-2 -right-2 bg-green-500 rounded-full p-1">
@@ -388,7 +375,10 @@ export default function FlashcardCreator() {
               <Button
                 onClick={() => saveFlashcardSet(false)}
                 disabled={
-                  isSaving || extractedSlides.length === 0 || !standard || !subject
+                  isSaving ||
+                  extractedSlides.length === 0 ||
+                  !standard ||
+                  !subject
                 }
                 variant="outline"
                 className="w-full transition-all hover:scale-[1.02]"
@@ -399,7 +389,10 @@ export default function FlashcardCreator() {
               <Button
                 onClick={() => saveFlashcardSet(true)}
                 disabled={
-                  isSaving || extractedSlides.length === 0 || !standard || !subject
+                  isSaving ||
+                  extractedSlides.length === 0 ||
+                  !standard ||
+                  !subject
                 }
                 className="w-full transition-all hover:scale-[1.02]"
               >
@@ -410,7 +403,7 @@ export default function FlashcardCreator() {
           </Card>
 
           {/* Preview Dimensions Card */}
-          <Card className="shadow-sm hover:shadow-md transition-all duration-300 sticky top-48">
+          {/* <Card className="shadow-sm hover:shadow-md transition-all duration-300 sticky top-48">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-semibold">
                 Preview Dimensions
@@ -439,7 +432,7 @@ export default function FlashcardCreator() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>

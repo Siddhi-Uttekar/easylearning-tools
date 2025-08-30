@@ -13,22 +13,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import {
-  IconArrowLeft,
   IconPhone,
-  IconLock,
   IconClock,
-  IconDeviceMobile,
-  IconShieldCheck,
-  IconSchool,
   IconCheck,
   IconArrowRight,
-  IconMail,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   // Form states
@@ -155,7 +148,7 @@ export default function LoginPage() {
         // Redirect to dashboard
         router.push("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to verify OTP. Please try again.");
     } finally {
       setIsLoading(false);
@@ -221,9 +214,11 @@ export default function LoginPage() {
         {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg bg-white">
-            <img
+            <Image
               src="/icon.png"
               alt="EasyLearning Logo"
+              width={64}
+              height={64}
               className="object-cover"
             />
           </div>
@@ -343,7 +338,7 @@ export default function LoginPage() {
                 {/* Resend OTP */}
                 <div className="text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Didn't receive the code?{" "}
+                    Didn&apos;t receive the code?{" "}
                     <Button
                       type="button"
                       variant="link"
@@ -391,7 +386,7 @@ export default function LoginPage() {
         {/* Footer Links */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>
-            By continuing, you agree to EasyLearning's{" "}
+            By continuing, you agree to EasyLearning&apos;s{" "}
             <Link
               href="/terms"
               className="text-blue-600 dark:text-blue-400 hover:underline"

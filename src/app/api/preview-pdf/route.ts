@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFiumLibrary } from "@hyzyla/pdfium";
+import { PDFiumLibrary, PDFiumDocument } from "@hyzyla/pdfium";
 import sharp from "sharp";
 
 interface RenderOptions {
@@ -26,8 +26,8 @@ async function renderFunction(options: RenderOptions) {
 }
 
 export async function POST(request: NextRequest) {
-  let library: any = null;
-  let document: any = null;
+  let library: PDFiumLibrary | null = null;
+  let document: PDFiumDocument | null = null;
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;

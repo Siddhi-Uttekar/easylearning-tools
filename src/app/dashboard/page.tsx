@@ -12,25 +12,15 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import {
-  IconDashboard,
   IconListDetails,
   IconChartBar,
   IconFolder,
-  IconUsers,
-  IconBook2,
   IconPresentation,
   IconIdBadge2,
   IconCards,
   IconArrowRight,
   IconSparkles,
-  IconFileText,
-  IconPhoto,
-  IconCertificate,
-  IconTrendingUp,
-  IconClock,
-  IconStar,
   IconBell,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -144,7 +134,7 @@ export default function DashboardPage() {
               Welcome back, {userName}!
             </h1>
             <p className="text-muted-foreground">
-              Here's what's happening with your teaching tools today.
+              Here&apos;s what&apos;s happening with your teaching tools today.
             </p>
           </div>
           <div className="flex items-center gap-2">

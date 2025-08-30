@@ -123,12 +123,22 @@ const CertificateDisplay = ({ data }: { data: CertificateData }) => {
 };
 
 // CSV Upload Component for Bulk WhatsApp Sending
+interface CSVRow {
+  name: string;
+  rank: string;
+  testsAttempted: string;
+  whatsappNumber: string;
+  medalType?: "auto" | "gold" | "silver" | "bronze" | "participation";
+  status?: "success" | "error";
+  message?: string;
+}
+
 const BulkWhatsAppSender = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvData, setCsvData] = useState<CSVRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<CSVRow[]>([]);
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -146,7 +156,7 @@ const BulkWhatsAppSender = () => {
       skipEmptyLines: true,
       complete: (results) => {
         console.log("Parsed CSV:", results.data);
-        setCsvData(results.data as any[]);
+        setCsvData(results.data as CSVRow[]);
       },
       error: (error) => {
         console.error("CSV parsing error:", error);
@@ -194,7 +204,7 @@ const BulkWhatsAppSender = () => {
     setResults([]);
 
     const totalStudents = csvData.length;
-    const processedResults: any[] = [];
+    const processedResults: CSVRow[] = [];
 
     for (let i = 0; i < totalStudents; i++) {
       const student = csvData[i];
@@ -222,7 +232,7 @@ const BulkWhatsAppSender = () => {
             name: student.name,
             rank: parseInt(student.rank) || 999,
             testsAttempted: parseInt(student.testsAttempted) || 1,
-            medalType: medal as any,
+            medalType: medal as "gold" | "silver" | "bronze" | "participation",
           },
           event: {
             name: eventName,
@@ -646,7 +656,7 @@ export default function CertificateGenerator() {
                     <Label htmlFor="medalType">Medal Type</Label>
                     <Select
                       value={medalType}
-                      onValueChange={(value: any) => setMedalType(value)}
+                      onValueChange={(value: "auto" | "gold" | "silver" | "bronze" | "participation") => setMedalType(value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select medal type" />

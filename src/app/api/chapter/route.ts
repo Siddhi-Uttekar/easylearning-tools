@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
 
+interface Chapter {
+  originalId: string;
+  name: string;
+  subject: string;
+  standard: string;
+  question_count: string;
+}
+
+interface ChaptersResponse {
+  chapters: Chapter[];
+  total: number;
+}
+
+
 const pool = new Pool({
   connectionString: process.env.QUESTIONDB,
   max: 20,
@@ -8,7 +22,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-const chaptersCache = { data: null as any, timestamp: 0 };
+const chaptersCache: { data: ChaptersResponse | null; timestamp: number } = { data: null, timestamp: 0 };
 const CACHE_DURATION = 10 * 60 * 1000;
 
 export async function GET() {

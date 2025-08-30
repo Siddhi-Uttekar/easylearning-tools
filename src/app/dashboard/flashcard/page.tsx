@@ -267,7 +267,7 @@ export default function EditFlashcardPage() {
                       <DialogTitle>Edit Flashcard Set</DialogTitle>
                       <DialogDescription>
                         Make changes to your flashcard set here. Click save when
-                        you're done.
+                        you&apos;re done.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -378,7 +378,7 @@ export default function EditFlashcardPage() {
             No flashcard sets found
           </h3>
           <p className="text-muted-foreground max-w-md mx-auto">
-            You haven't created any flashcard sets yet. Create your first set to
+            You haven&apos;t created any flashcard sets yet. Create your first set to
             get started.
           </p>
         </div>

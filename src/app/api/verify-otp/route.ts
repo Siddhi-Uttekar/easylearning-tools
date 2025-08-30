@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await rateLimiter.consume(ip);
-    } catch (rateLimiterRes) {
+    } catch {
       if (process.env.NODE_ENV === "production") {
         const redisKey = `otp_verify:${ip}`;
         const points = (await redis.get(redisKey)) as string | null;

@@ -9,7 +9,55 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-const cache = new Map<string, { data: any; timestamp: number }>();
+interface Question {
+  question_id: string;
+  question_text: string;
+  solution: string;
+  difficulty_level: string;
+  chapter_name: string;
+  subject: string;
+  standard: string;
+  options: {
+    option_id: string;
+    option_text: string;
+    is_correct: boolean;
+  }[];
+}
+
+interface QuestionsSuccessResponse {
+  questions: Question[];
+  total: number;
+  chapter: string;
+  difficulty: string;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+interface QuestionsNotFoundResponse {
+  questions: Question[];
+  message: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  available_chapters: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  difficulty_counts: any[];
+  total_questions: number;
+  debug_info: {
+    searched_chapter: string;
+    difficulty_filter: string;
+    limit: number;
+    offset: number;
+  };
+}
+
+type CachedQuestionsResponse =
+  | QuestionsSuccessResponse
+  | QuestionsNotFoundResponse;
+
+const cache = new Map<
+  string,
+  { data: CachedQuestionsResponse; timestamp: number }
+>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: NextRequest) {
@@ -33,7 +81,7 @@ export async function GET(request: NextRequest) {
       JOIN "QuestionBankChapter" c ON q."chapterOriginalId" = c."originalId"
       WHERE c.name ILIKE $1
     `;
-    const queryParams: any[] = [`%${chapter}%`];
+    const queryParams: (string | number)[] = [`%${chapter}%`];
 
     // Add difficulty filter if specified
     if (difficulty !== "all") {
@@ -52,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     if (questionIds.length === 0) {
       // Fallback: Try without difficulty filter
-      let fallbackQuery = `
+      const fallbackQuery = `
         SELECT q."originalId"
         FROM "QuestionBankQuestion" q
         JOIN "QuestionBankChapter" c ON q."chapterOriginalId" = c."originalId"
@@ -156,8 +204,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
+interface Row {
+  question_id: string;
+  questionText: string;
+  solution: string;
+  difficultyLevel: string;
+  chapter_name: string;
+  subject: string;
+  standard: string;
+  option_id: string;
+  optionText: string;
+  isCorrect: boolean;
+}
+
 // Helper function to process question rows
-function processQuestionRows(rows: any[]) {
+function processQuestionRows(rows: Row[]): Question[] {
   const questionsMap = new Map();
 
   for (const row of rows) {

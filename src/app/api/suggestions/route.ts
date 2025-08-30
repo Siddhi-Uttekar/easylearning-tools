@@ -11,7 +11,7 @@ export async function GET() {
       include: { author: { select: { name: true, image: true } } },
     });
     return NextResponse.json(suggestions);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch suggestions" },
       { status: 500 }

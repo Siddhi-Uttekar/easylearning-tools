@@ -27,8 +27,7 @@ const sendOTPViaAisensy = async (phone: string, otp: string) => {
 
   const AISENSY_API_URL = process.env.AISENSY_API_URL!;
   const AISENSY_API_KEY = process.env.AISENSY_API_KEY!;
-  const AISENSY_CAMPAIGN = process.env.AISENSY_CAMPAIGN!;
-
+  
   const payload = {
     apiKey: AISENSY_API_KEY,
     campaignName: "Verify OTP",
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await rateLimiter.consume(ip);
-    } catch (rateLimiterRes) {
+    } catch {
       // Only use Redis in production
       if (process.env.NODE_ENV === "production" && redis) {
         const redisKey = `otp_send:${ip}`;

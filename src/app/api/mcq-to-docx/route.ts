@@ -271,7 +271,7 @@ function parseHtmlContent(html: string): {
         }
 
         // Clean option text (remove A), B), etc.)
-        let optionText = line.replace(/^[A-Z][).]\s*/, "");
+        const optionText = line.replace(/^[A-Z][).]\s*/, "");
         q.options.push([optionText, "incorrect"]);
       }
     }

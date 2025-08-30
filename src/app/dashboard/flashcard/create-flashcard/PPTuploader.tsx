@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import Image from "next/image";
 import {
   Upload,
   FileText,
@@ -76,7 +77,7 @@ export default function PPTProcessor({
         setProgress(100);
         setProgressText("Extraction complete!");
         toast.success(`Extracted ${images.length} images.`);
-      } catch (error) {
+      } catch {
         toast.error("Failed to extract images.");
         setProgressText("");
       } finally {
@@ -121,7 +122,7 @@ export default function PPTProcessor({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       toast.success("PowerPoint generated and downloaded successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to generate PowerPoint");
     } finally {
       setIsGenerating(false);
@@ -289,9 +290,11 @@ export default function PPTProcessor({
               <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto p-2 bg-muted rounded-lg">
                 {extractedSlides.map((slide) => (
                   <div key={slide.slideNumber} className="relative group">
-                    <img
+                    <Image
                       src={slide.dataUrl}
                       alt={`Slide ${slide.slideNumber}`}
+                      width={200}
+                      height={150}
                       className="w-full h-20 object-cover rounded-lg border-2 border-border group-hover:border-primary transition-all"
                     />
                     <button

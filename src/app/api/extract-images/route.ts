@@ -4,6 +4,7 @@ import path from "path";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { Prisma } from "@prisma/client";
 import cuid from "cuid";
 
 export async function POST(request: NextRequest) {
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
         subject: subject as string,
         createdBy: session.user.id,
         createdByName: session.user.name,
-        flashcardsData: savedImages as any,
+        flashcardsData: savedImages as Prisma.JsonArray,
         flashcardCount: savedImages.length,
         published: true,
         thumbnailId: thumbnailId,

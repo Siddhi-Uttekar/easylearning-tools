@@ -20,6 +20,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
 const data = {
@@ -101,7 +102,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border pt-4">
+      <SidebarFooter>
+        <SidebarSeparator />
         <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />

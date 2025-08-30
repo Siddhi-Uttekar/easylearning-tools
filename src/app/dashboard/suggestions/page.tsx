@@ -1,6 +1,6 @@
 "use client";
 import { useHeaderStore } from "@/store/header-store";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -228,11 +228,7 @@ const SuggestionDetailDialog = ({ item }: { item: FeatureSuggestion }) => {
   const [isCommenting, setIsCommenting] = useState(false);
   const [isFetchingComments, setIsFetchingComments] = useState(true);
 
-  useEffect(() => {
-    fetchComments();
-  }, [item.id]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setIsFetchingComments(true);
     try {
       const response = await fetch(`/api/suggestions/${item.id}/comments`);
@@ -245,7 +241,11 @@ const SuggestionDetailDialog = ({ item }: { item: FeatureSuggestion }) => {
     } finally {
       setIsFetchingComments(false);
     }
-  };
+  }, [item.id]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [item.id, fetchComments]);
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -518,11 +518,37 @@ const KanbanPage = () => {
     },
   });
 
-  useEffect(() => {
-    fetchSuggestions();
+  const updateColumns = useCallback((data: FeatureSuggestion[]) => {
+    setColumns((prevColumns) => {
+      const newColumns: Columns = {
+        PENDING: { ...prevColumns.PENDING, items: [] },
+        IN_PROGRESS: { ...prevColumns.IN_PROGRESS, items: [] },
+        COMPLETED: { ...prevColumns.COMPLETED, items: [] },
+        DECLINED: { ...prevColumns.DECLINED, items: [] },
+      };
+
+      data.forEach((item) => {
+        if (newColumns[item.status]) {
+          newColumns[item.status].items.push(item);
+        }
+      });
+
+      // Sort items by upvotes (descending) and then by creation date (newest first)
+      Object.keys(newColumns).forEach((status) => {
+        newColumns[status as SuggestionStatus].items.sort((a, b) => {
+          if (a.upvotes !== b.upvotes) {
+            return b.upvotes - a.upvotes;
+          }
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+      });
+      return newColumns;
+    });
   }, []);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/suggestions");
@@ -533,36 +559,11 @@ const KanbanPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [updateColumns]);
 
-  const updateColumns = (data: FeatureSuggestion[]) => {
-    const newColumns: Columns = {
-      PENDING: { ...columns.PENDING, items: [] },
-      IN_PROGRESS: { ...columns.IN_PROGRESS, items: [] },
-      COMPLETED: { ...columns.COMPLETED, items: [] },
-      DECLINED: { ...columns.DECLINED, items: [] },
-    };
-
-    data.forEach((item) => {
-      if (newColumns[item.status]) {
-        newColumns[item.status].items.push(item);
-      }
-    });
-
-    // Sort items by upvotes (descending) and then by creation date (newest first)
-    Object.keys(newColumns).forEach((status) => {
-      newColumns[status as SuggestionStatus].items.sort((a, b) => {
-        if (a.upvotes !== b.upvotes) {
-          return b.upvotes - a.upvotes;
-        }
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
-    });
-
-    setColumns(newColumns);
-  };
+  useEffect(() => {
+    fetchSuggestions();
+  }, [fetchSuggestions]);
 
   const onDragEnd = async (result: DropResultType) => {
     const { source, destination } = result;
@@ -702,7 +703,7 @@ const KanbanPage = () => {
                 <DialogHeader>
                   <DialogTitle>Suggest a New Feature</DialogTitle>
                   <DialogDescription>
-                    We'd love to hear your ideas for improving our tools.
+                    We&apos;d love to hear your ideas for improving our tools.
                   </DialogDescription>
                 </DialogHeader>
                 <SuggestionForm onSuccess={handleSuccess} />

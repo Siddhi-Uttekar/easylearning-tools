@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -28,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -40,7 +38,6 @@ import {
   IconSearch,
   IconCheck,
   IconX,
-  IconSchool,
   IconChevronRight,
   IconLoader2,
   IconHelpCircle,
@@ -108,6 +105,116 @@ export default function MCQGenerator() {
   const [pptError, setPptError] = useState<string>("");
   const [pptSuccess, setPptSuccess] = useState<string>("");
 
+  const cleanHtmlContentWithLaTeX = (
+    html: string | null | undefined,
+  ): string => {
+    if (!html || typeof html !== "string") {
+      return "";
+    }
+    let cleaned = html
+      .replace(/\$\$([^$]+)\$\$/g, "$1")
+      .replace(/\$([^$]+)\$/g, "$1")
+      .replace(/\\hat\{([^}]+)\}/g, "$1̂")
+      .replace(/\\overset\{\\to\s*\}\{\\mathop\{([^}]+)\}\\,\}/g, "$1⃗")
+      .replace(/\\mathop\{([^}]+)\}/g, "$1")
+      .replace(/\\,/g, " ")
+      .replace(/&there4;/g, "∴")
+      .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+      .replace(/\{\{([^}]+)\}\}/g, "$1")
+      .replace(/\\hat\{([^}]+)\}/g, "$1̂")
+      .replace(/\^2/g, "²")
+      .replace(/\^3/g, "³")
+      .replace(
+        /\^([0-9])/g,
+        (match, p1) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number.parseInt(p1)] || "^" + p1,
+      )
+      .replace(/_{([^}]+)}/g, "₍$1₎")
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
+      .replace(/\\times/g, "×")
+      .replace(/\\cdot/g, "·")
+      .replace(/\\pm/g, "±")
+      .replace(/\\alpha/g, "α")
+      .replace(/\\beta/g, "β")
+      .replace(/\\gamma/g, "γ")
+      .replace(/\\delta/g, "δ")
+      .replace(/\\theta/g, "θ")
+      .replace(/\\pi/g, "π")
+      .replace(/\\omega/g, "ω")
+      .replace(/\\Omega/g, "Ω")
+      .replace(/\\mu/g, "μ")
+      .replace(/\\sigma/g, "σ")
+      .replace(/\\lambda/g, "λ")
+      .replace(/\\phi/g, "φ")
+      .replace(/\\psi/g, "ψ")
+      .replace(/\\chi/g, "χ")
+      .replace(/\\rho/g, "ρ")
+      .replace(/\\tau/g, "τ")
+      .replace(/\\epsilon/g, "ε")
+      .replace(/\\zeta/g, "ζ")
+      .replace(/\\eta/g, "η")
+      .replace(/\\kappa/g, "κ")
+      .replace(/\\nu/g, "ν")
+      .replace(/\\xi/g, "ξ")
+      .replace(/\\upsilon/g, "υ")
+      .replace(/\\leq/g, "≤")
+      .replace(/\\geq/g, "≥")
+      .replace(/\\neq/g, "≠")
+      .replace(/\\approx/g, "≈")
+      .replace(/\\equiv/g, "≡")
+      .replace(/\\propto/g, "∝")
+      .replace(/\\infty/g, "∞")
+      .replace(/\\partial/g, "∂")
+      .replace(/\\nabla/g, "∇")
+      .replace(/\\int/g, "∫")
+      .replace(/\\sum/g, "∑")
+      .replace(/\\prod/g, "∏")
+      .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1")
+      .replace(/\\[a-zA-Z]+/g, "");
+
+    cleaned = cleaned
+      .replace(/<img[^>]*>/gi, "")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/p>/gi, " ")
+      .replace(/<p[^>]*>/gi, "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&hellip;/g, "...")
+      .replace(/&mdash;/g, "—")
+      .replace(/&ndash;/g, "–")
+      .replace(/&rsquo;/g, "'")
+      .replace(/&lsquo;/g, "'")
+      .replace(/&rdquo;/g, '"')
+      .replace(/&ldquo;/g, '"');
+
+    cleaned = cleaned.replace(/&[a-zA-Z0-9#]+;/g, "");
+
+    cleaned = cleaned
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      .replace(/[\uFFFE\uFFFF]/g, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+
+    cleaned = cleaned
+      .replace(/\s+/g, " ")
+      .replace(/\n\s*\n/g, "\n")
+      .trim();
+
+    if (!cleaned || cleaned.length === 0) {
+      return "Content not available";
+    }
+
+    if (cleaned.length > 5000) {
+      cleaned = cleaned.substring(0, 5000) + "...";
+    }
+
+    return cleaned;
+  };
+
   // Fetch chapters on component mount
   useEffect(() => {
     const fetchChapters = async () => {
@@ -123,25 +230,8 @@ export default function MCQGenerator() {
     fetchChapters();
   }, []);
 
-  // Fetch questions when chapter or filters change
-  useEffect(() => {
-    if (selectedChapters.length > 0) {
-      fetchQuestions();
-    }
-  }, [selectedChapters, difficultyFilter, questionLimit, offset]);
-
-  // Parse MCQ text when it changes
-  useEffect(() => {
-    if (mcqText.trim()) {
-      const parsed = parseMCQText(mcqText);
-      setParsedQuestions(parsed);
-    } else {
-      setParsedQuestions([]);
-    }
-  }, [mcqText]);
-
   // Fetch questions from API
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     if (selectedChapters.length === 0) return;
     setIsLoadingQuestions(true);
     setError("");
@@ -171,7 +261,24 @@ export default function MCQGenerator() {
     } finally {
       setIsLoadingQuestions(false);
     }
-  };
+  }, [selectedChapters, difficultyFilter, questionLimit, offset]);
+
+  // Fetch questions when chapter or filters change
+  useEffect(() => {
+    if (selectedChapters.length > 0) {
+      fetchQuestions();
+    }
+  }, [selectedChapters, difficultyFilter, questionLimit, offset, fetchQuestions]);
+
+  // Parse MCQ text when it changes
+  useEffect(() => {
+    if (mcqText.trim()) {
+      const parsed = parseMCQText(mcqText);
+      setParsedQuestions(parsed);
+    } else {
+      setParsedQuestions([]);
+    }
+  }, [mcqText]);
 
   // Load more questions
   const loadMoreQuestions = () => {
@@ -275,27 +382,22 @@ export default function MCQGenerator() {
     });
   };
 
-  // Clear all selections
-  const clearSelections = () => {
-    setSelectedQuestions([]);
-    setSelectedChapters([]);
-    setAvailableQuestions([]);
-    setOffset(0);
-  };
 
   // Add selected questions to MCQ text
   const addSelectedQuestionsToMCQ = () => {
     if (selectedQuestions.length === 0) return;
     const mcqContent = selectedQuestions
-      .map((question, index) => {
+      .map((question) => {
         const correctOption = question.options.find((opt) => opt.is_correct);
         const correctLetter = correctOption
           ? String.fromCharCode(65 + question.options.indexOf(correctOption))
           : "";
-        return `[Q] ${question.question_text}
-${question.options.map((opt, i) => `[O] ${opt.option_text}`).join("\n")}
+        return `[Q] ${cleanHtmlContentWithLaTeX(question.question_text)}
+${question.options
+  .map((opt) => `[O] ${cleanHtmlContentWithLaTeX(opt.option_text)}`)
+  .join("\n")}
 [A] ${correctLetter}
-[S] ${question.solution}
+[S] ${cleanHtmlContentWithLaTeX(question.solution)}
 [M] 1`;
       })
       .join("\n\n");
@@ -420,18 +522,6 @@ ${question.options.map((opt, i) => `[O] ${opt.option_text}`).join("\n")}
     setPptSuccess("");
   };
 
-  // Insert selected chapters as comments
-  const insertSelectedChapters = () => {
-    if (selectedChapters.length > 0) {
-      const chapterComments = selectedChapters
-        .map(
-          (chapter) =>
-            `// ${chapter.name} (${chapter.subject} - Class ${chapter.standard})`
-        )
-        .join("\n");
-      setMcqText((prev) => prev + "\n\n" + chapterComments + "\n\n");
-    }
-  };
 
   // Add new question template
   const addNewQuestion = () => {
