@@ -371,10 +371,7 @@ async function generatePDF(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? "/snap/bin/chromium"
-          : undefined,
+      executablePath: "/snap/bin/chromium",
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -397,10 +394,7 @@ async function generatePNG(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? "/snap/bin/chromium"
-          : undefined,
+      executablePath: "/snap/bin/chromium",
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
