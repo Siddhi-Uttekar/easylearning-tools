@@ -4,7 +4,7 @@ import { CertificateData } from "@/types/certificates";
 import {
   generateCertificateHTML,
   generatePDF,
-} from "@/utils/certificateGenerator";
+} from "@/utils/certificate/generation";
 
 export async function POST(req: NextRequest) {
   try {

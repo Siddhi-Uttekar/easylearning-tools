@@ -1,6 +1,5 @@
 "use client";
 import { useHeaderStore } from "@/store/header-store";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -50,11 +49,10 @@ function FlashcardItem({ front, back }: { front: Flashcard; back: Flashcard }) {
           }`}
         >
           <Card className="w-full h-full flex flex-col justify-center items-center p-6 shadow-sm hover:shadow-md transition-all duration-300 border-0">
-            <Image
+            <img
               src={`/uploads/${front.imageName}`}
               alt="Flashcard Front"
-              fill
-              className="object-contain"
+              className="object-contain w-full h-full"
             />
           </Card>
         </div>
@@ -66,11 +64,10 @@ function FlashcardItem({ front, back }: { front: Flashcard; back: Flashcard }) {
           }`}
         >
           <Card className="w-full h-full flex flex-col justify-center items-center p-6 shadow-sm hover:shadow-md transition-all duration-300 border-0 bg-primary text-primary-foreground">
-            <Image
+            <img
               src={`/uploads/${back.imageName}`}
               alt="Flashcard Back"
-              fill
-              className="object-contain"
+              className="object-contain w-full h-full"
             />
           </Card>
         </div>
@@ -189,11 +186,10 @@ export default function FlashcardSetPage() {
             <CardContent className="space-y-4">
               {flashcardSet.thumbnail && (
                 <div className="aspect-video relative overflow-hidden rounded-lg">
-                  <Image
+                  <img
                     src={`/uploads/${flashcardSet.thumbnail}`}
                     alt={flashcardSet.title}
-                    fill
-                    className="object-cover"
+                    className="object-cover w-full h-full"
                   />
                 </div>
               )}

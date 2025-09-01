@@ -1,15 +1,14 @@
-// src/utils/certificateGenerator.ts
+// src/utils/certificate/generation.ts
 import puppeteer from "puppeteer";
 import { CertificateData } from "@/types/certificates";
-import { formatDate } from "@/utils/certificateUtils";
 
 export function generateCertificateHTML(data: CertificateData): string {
-  const { student, event } = data;
+  const { student, event, certificateType } = data;
   const getMedalEmoji = () => {
-    if (student.medalType === "gold") return "🥇";
-    if (student.medalType === "silver") return "🥈";
-    if (student.medalType === "bronze") return "🥉";
-    return "⭐";
+    if (student.medalType === "gold") return "&#x1F947;";
+    if (student.medalType === "silver") return "&#x1F948;";
+    if (student.medalType === "bronze") return "&#x1F949;";
+    return "&#x2B50;";
   };
 
   return `
@@ -58,6 +57,7 @@ export function generateCertificateHTML(data: CertificateData): string {
           bottom: 32px;
           border-radius: 16px;
           border: 3px solid rgba(11,130,182,0.12);
+          z-index: 10; /* Ensure border is on top */
         }
         
         .ribbon {
@@ -68,6 +68,7 @@ export function generateCertificateHTML(data: CertificateData): string {
           height: 120px;
           background: linear-gradient(to bottom, rgba(14,165,233,0.18), rgba(255,255,255,0));
           border-bottom: 1px solid #dfeefe;
+          z-index: 5;
         }
         
         .logo-container {
@@ -78,6 +79,7 @@ export function generateCertificateHTML(data: CertificateData): string {
           display: flex;
           align-items: center;
           gap: 16px;
+          z-index: 6;
         }
         
         .logo {
@@ -126,6 +128,7 @@ export function generateCertificateHTML(data: CertificateData): string {
           align-items: center;
           justify-content: center;
           gap: 40px;
+          z-index: 6;
         }
         
         .title {
@@ -142,16 +145,16 @@ export function generateCertificateHTML(data: CertificateData): string {
         }
         
         .event-name {
-          font-size: 28px; /* Increased from 18px */
+          font-size: 28px;
           font-weight: bold;
-          letter-spacing: 4px; /* Reduced from 6px for better readability */
+          letter-spacing: 4px;
           text-transform: uppercase;
-          color: #0c4a6e; /* Darker blue for more contrast */
-          text-shadow: 0px 1px 2px rgba(0,0,0,0.1); /* Subtle shadow for depth */
-          padding: 8px 16px; /* Added padding */
-          border-radius: 8px; /* Rounded corners */
-          background-color: rgba(14, 165, 233, 0.1); /* Light blue background */
-          display: inline-block; /* To contain the background */
+          color: #0c4a6e;
+          text-shadow: 0px 1px 2px rgba(0,0,0,0.1);
+          padding: 8px 16px;
+          border-radius: 8px;
+          background-color: rgba(14, 165, 233, 0.1);
+          display: inline-block;
         }
         
         .awarded-to {
@@ -227,19 +230,20 @@ export function generateCertificateHTML(data: CertificateData): string {
         
         .footer-image {
           position: absolute;
-          bottom: 40px;
+          bottom: 32px; /* Changed from 40px to touch the inner border */
           left: 50%;
           transform: translateX(-50%);
-          width: 80%;
-          max-height: 200px;
+          width: 85%; /* Increased width */
+          max-height: 280px; /* Increased height */
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 4; /* Below the inner border */
         }
         
         .footer-image img {
-          max-width: 100%;
-          max-height: 200px;
+          width: 100%;
+          height: 100%;
           object-fit: contain;
         }
       </style>
@@ -262,7 +266,7 @@ export function generateCertificateHTML(data: CertificateData): string {
         
         <div class="content">
           <div class="title">
-            <h1 class="certificate-title">Certificate of Achievement</h1>
+            <h1 class="certificate-title">${certificateType}</h1>
             <div class="event-name">${event.name.toUpperCase()}</div>
           </div>
           
@@ -279,18 +283,14 @@ export function generateCertificateHTML(data: CertificateData): string {
           </div>
           
           <div class="metadata">
-            <div class="metadata-item">
-              <span>🏆</span>
-              <span>Rank ${student.rank}</span>
-            </div>
-            <div class="metadata-item">
-              <span>📝</span>
+            ${
+              student.testsAttempted
+                ? `<div class="metadata-item">
+              <span>&#x1F4DD;</span>
               <span>${student.testsAttempted} Tests Attempted</span>
-            </div>
-            <div class="metadata-item">
-              <span>📅</span>
-              <span>${formatDate(new Date(event.date))}</span>
-            </div>
+            </div>`
+                : ""
+            }
           </div>
         </div>
         
@@ -309,7 +309,7 @@ export async function generatePDF(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: "/snap/bin/chromium",
+      // executablePath: "/snap/bin/chromium",
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -332,7 +332,7 @@ export async function generatePNG(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: "/snap/bin/chromium",
+      // executablePath: "/snap/bin/chromium",
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });

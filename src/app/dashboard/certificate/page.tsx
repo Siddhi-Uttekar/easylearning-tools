@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import { Upload, Download, Send, FileText, Users } from "lucide-react";
 
 // Certificate Display Component
 const CertificateDisplay = ({ data }: { data: CertificateData }) => {
-  const { student, event } = data;
+  const { student, event, certificateType } = data;
 
   const getMedalEmoji = () => {
     if (student.medalType === "gold") return "🥇";
@@ -68,7 +69,7 @@ const CertificateDisplay = ({ data }: { data: CertificateData }) => {
       <div className="absolute left-[80px] right-[80px] top-[160px] bottom-[300px] flex flex-col items-center justify-center gap-[22px]">
         <div className="text-center">
           <h1 className="text-[67px] font-serif font-bold text-blue-900 mb-1">
-            Certificate of Achievement
+            {certificateType}
           </h1>
           <div className="text-lg font-bold tracking-[6px] uppercase text-blue-700">
             {event.name.toUpperCase()}
@@ -100,15 +101,11 @@ const CertificateDisplay = ({ data }: { data: CertificateData }) => {
 
         {/* Metadata chips */}
         <div className="flex gap-[26px] justify-center flex-wrap">
-          <div className="px-4 py-2 rounded-full border border-[#e2ecf7] bg-[#f7fbff] font-semibold flex items-center gap-2">
-            🏆 <span>Rank {student.rank}</span>
-          </div>
-          <div className="px-4 py-2 rounded-full border border-[#e2ecf7] bg-[#f7fbff] font-semibold flex items-center gap-2">
-            📝 <span>{student.testsAttempted} Tests Attempted</span>
-          </div>
-          <div className="px-4 py-2 rounded-full border border-[#e2ecf7] bg-[#f7fbff] font-semibold flex items-center gap-2">
-            📅 <span>{event.date.toLocaleDateString()}</span>
-          </div>
+            {student.testsAttempted && (
+              <div className="px-4 py-2 rounded-full border border-[#e2ecf7] bg-[#f7fbff] font-semibold flex items-center gap-2">
+                📝 <span>{student.testsAttempted} Tests Attempted</span>
+              </div>
+            )}
         </div>
       </div>
 
@@ -126,7 +123,7 @@ const CertificateDisplay = ({ data }: { data: CertificateData }) => {
 interface CSVRow {
   name: string;
   rank: string;
-  testsAttempted: string;
+  testsAttempted?: string;
   whatsappNumber: string;
   medalType?: "auto" | "gold" | "silver" | "bronze" | "participation";
   status?: "success" | "error";
@@ -140,9 +137,11 @@ const BulkWhatsAppSender = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CSVRow[]>([]);
   const [eventName, setEventName] = useState("");
-  const [eventDate, setEventDate] = useState(
-    new Date().toISOString().split("T")[0]
+  const [bulkCertificateType, setBulkCertificateType] = useState(
+    "Certificate of Excellence"
   );
+  const [bulkIncludeTestsAttempted, setBulkIncludeTestsAttempted] =
+    useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,22 +165,37 @@ const BulkWhatsAppSender = () => {
   };
 
   const downloadSampleCSV = () => {
-    const sampleData = [
-      {
-        name: "Cristiano Ronaldo",
-        rank: 1,
-        testsAttempted: 15,
-        whatsappNumber: "9876543210",
-        medalType: "auto",
-      },
-      {
-        name: "Leo Messi",
-        rank: 2,
-        testsAttempted: 12,
-        whatsappNumber: "9876543210",
-        medalType: "auto",
-      },
-    ];
+    const sampleData = bulkIncludeTestsAttempted
+      ? [
+          {
+            name: "Cristiano Ronaldo",
+            rank: 1,
+            testsAttempted: 15,
+            whatsappNumber: "9876543210",
+            medalType: "auto",
+          },
+          {
+            name: "Leo Messi",
+            rank: 2,
+            testsAttempted: 12,
+            whatsappNumber: "9876543210",
+            medalType: "auto",
+          },
+        ]
+      : [
+          {
+            name: "Cristiano Ronaldo",
+            rank: 1,
+            whatsappNumber: "9876543210",
+            medalType: "auto",
+          },
+          {
+            name: "Leo Messi",
+            rank: 2,
+            whatsappNumber: "9876543210",
+            medalType: "auto",
+          },
+        ];
 
     const csv = Papa.unparse(sampleData);
     const blob = new Blob([csv], { type: "text/csv" });
@@ -231,13 +245,15 @@ const BulkWhatsAppSender = () => {
             id: Math.random().toString(36).substring(7),
             name: student.name,
             rank: parseInt(student.rank) || 999,
-            testsAttempted: parseInt(student.testsAttempted) || 1,
+            testsAttempted: bulkIncludeTestsAttempted
+              ? Number(student.testsAttempted) || undefined
+              : undefined,
             medalType: medal as "gold" | "silver" | "bronze" | "participation",
           },
           event: {
             name: eventName,
-            date: new Date(eventDate),
           },
+          certificateType: bulkCertificateType,
         };
 
         const requestBody = {
@@ -311,19 +327,54 @@ const BulkWhatsAppSender = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bulkEventDate">Event Date</Label>
-            <Input
-              id="bulkEventDate"
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              required
-            />
+            <Label htmlFor="bulkCertificateType">Certificate Type</Label>
+            <Select
+              value={bulkCertificateType}
+              onValueChange={(value) => setBulkCertificateType(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select certificate type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Certificate of Participation">
+                  Certificate of Participation
+                </SelectItem>
+                <SelectItem value="Certificate of Achievement">
+                  Certificate of Achievement
+                </SelectItem>
+                <SelectItem value="Certificate of Excellence">
+                  Certificate of Excellence
+                </SelectItem>
+                <SelectItem value="Certificate of Completion">
+                  Certificate of Completion
+                </SelectItem>
+                <SelectItem value="Certificate of Appreciation">
+                  Certificate of Appreciation
+                </SelectItem>
+                <SelectItem value="Certificate of Merit">
+                  Certificate of Merit
+                </SelectItem>
+                <SelectItem value="Certificate of Recognition">
+                  Certificate of Recognition
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         {/* CSV Upload Section */}
         <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="bulkIncludeTestsAttempted"
+              checked={bulkIncludeTestsAttempted}
+              onCheckedChange={setBulkIncludeTestsAttempted}
+            />
+            <Label htmlFor="bulkIncludeTestsAttempted">
+              Include Tests Attempted in CSV
+            </Label>
+          </div>
+
           <div className="flex items-center justify-between">
             <Label>Upload CSV File</Label>
             <Button
@@ -364,8 +415,9 @@ const BulkWhatsAppSender = () => {
           <Alert>
             <FileText className="h-4 w-4" />
             <AlertDescription>
-              CSV should contain columns: name, rank, testsAttempted,
-              whatsappNumber, medalType (optional)
+              CSV should contain columns: name, rank, whatsappNumber.
+              {bulkIncludeTestsAttempted && " Optional: testsAttempted, "}
+              medalType (optional).
             </AlertDescription>
           </Alert>
         </div>
@@ -392,7 +444,7 @@ const BulkWhatsAppSender = () => {
                     <tr key={index} className="border-t">
                       <td className="px-3 py-2">{student.name}</td>
                       <td className="px-3 py-2">{student.rank}</td>
-                      <td className="px-3 py-2">{student.testsAttempted}</td>
+                      <td className="px-3 py-2">{student.testsAttempted ?? "N/A"}</td>
                       <td className="px-3 py-2">{student.whatsappNumber}</td>
                     </tr>
                   ))}
@@ -490,12 +542,14 @@ export default function CertificateGenerator() {
   const [rank, setRank] = useState<number>(1);
   const [testsAttempted, setTestsAttempted] = useState<number>(10);
   const [eventName, setEventName] = useState("");
-  const [date, setDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
   const [medalType, setMedalType] = useState<
     "auto" | "gold" | "silver" | "bronze" | "participation"
   >("auto");
+  const [certificateType, setCertificateType] = useState(
+    "Certificate of Excellence"
+  );
+
+  const [includeTestsAttempted, setIncludeTestsAttempted] = useState(true);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -510,13 +564,13 @@ export default function CertificateGenerator() {
         id: Math.random().toString(36).substring(7),
         name: studentName,
         rank,
-        testsAttempted,
+        testsAttempted: includeTestsAttempted ? testsAttempted : undefined,
         medalType: medal,
       },
       event: {
         name: eventName,
-        date: new Date(date),
       },
+      certificateType,
     };
 
     setCertificateData(data);
@@ -600,19 +654,32 @@ export default function CertificateGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="testsAttempted">Tests Attempted</Label>
-                    <Input
-                      id="testsAttempted"
-                      type="number"
-                      min="1"
-                      value={testsAttempted}
-                      onChange={(e) =>
-                        setTestsAttempted(parseInt(e.target.value) || 0)
-                      }
-                      required
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="includeTestsAttempted"
+                      checked={includeTestsAttempted}
+                      onCheckedChange={setIncludeTestsAttempted}
                     />
+                    <Label htmlFor="includeTestsAttempted">
+                      Include Tests Attempted
+                    </Label>
                   </div>
+
+                  {includeTestsAttempted && (
+                    <div className="space-y-2">
+                      <Label htmlFor="testsAttempted">Tests Attempted</Label>
+                      <Input
+                        id="testsAttempted"
+                        type="number"
+                        min="1"
+                        value={testsAttempted}
+                        onChange={(e) =>
+                          setTestsAttempted(parseInt(e.target.value) || 0)
+                        }
+                        required
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="eventName">Event Name</Label>
@@ -621,17 +688,6 @@ export default function CertificateGenerator() {
                       value={eventName}
                       onChange={(e) => setEventName(e.target.value)}
                       placeholder="Enter event name"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
                       required
                     />
                   </div>
@@ -661,6 +717,41 @@ export default function CertificateGenerator() {
                         <SelectItem value="bronze">Bronze</SelectItem>
                         <SelectItem value="participation">
                           Participation
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="certificateType">Certificate Type</Label>
+                    <Select
+                      value={certificateType}
+                      onValueChange={(value) => setCertificateType(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select certificate type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Certificate of Participation">
+                          Certificate of Participation
+                        </SelectItem>
+                        <SelectItem value="Certificate of Achievement">
+                          Certificate of Achievement
+                        </SelectItem>
+                        <SelectItem value="Certificate of Excellence">
+                          Certificate of Excellence
+                        </SelectItem>
+                        <SelectItem value="Certificate of Completion">
+                          Certificate of Completion
+                        </SelectItem>
+                        <SelectItem value="Certificate of Appreciation">
+                          Certificate of Appreciation
+                        </SelectItem>
+                        <SelectItem value="Certificate of Merit">
+                          Certificate of Merit
+                        </SelectItem>
+                        <SelectItem value="Certificate of Recognition">
+                          Certificate of Recognition
                         </SelectItem>
                       </SelectContent>
                     </Select>
