@@ -52,8 +52,8 @@ const addLogo = (slide: any) => {
   try {
     slide.addImage({
       path: logoPath,
-      x: 9.0,
-      y: 0,
+      x: 9.5, // 10 (slide width) - 0.6 (logo width) - 0.2 (margin)
+      y: -0.1, // consistent top margin
       w: 0.6,
       h: 0.6,
     });
@@ -183,146 +183,222 @@ export async function POST(request: NextRequest) {
       italic: true,
     });
 
-    // ── One slide per question ────────────────────────────────────
+    // ── Two slides per question: [1] Question  [2] Answer + Solution ──
     questions.forEach((q, idx) => {
-      const slide = pptx.addSlide();
-      slide.background = { color: COLORS.bg };
-      addWatermark(slide);
+      const infoText = `Q${idx + 1}  •  ${metadata?.chapter || ""}  •  ${metadata?.subject || ""}  •  Class ${metadata?.standard || ""}`;
+      const validOptions = q.options || [];
 
-      // Q info line (plain dark text, no bar)
-      slide.addText(
-        `Q${idx + 1}  •  ${metadata?.chapter || ""}  •  ${metadata?.subject || ""}  •  Class ${metadata?.standard || ""}`,
-        {
+      // ── Helper: render question box ──────────────────────────────
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const addQuestionBox = (s: any) => {
+        s.addShape("rect", {
           x: 0.2,
-          y: 0.05,
+          y: 0.45,
           w: 9.6,
-          h: 0.35,
-          fontSize: 10,
-          color: COLORS.metaText,
+          h: 1.5,
+          fill: { color: COLORS.card },
+          line: { color: COLORS.accent, width: 1.5 },
+        });
+        s.addText(q.question_text, {
+          x: 0.35,
+          y: 0.5,
+          w: 9.3,
+          h: 1.4,
+          fontSize: 14,
+          bold: true,
+          color: COLORS.questionText,
           fontFace: "Calibri",
+          wrap: true,
           valign: "middle",
-        },
-      );
-      addLogo(slide);
+        });
+      };
 
-      // Question text box
-      slide.addShape("rect", {
+      // ── Helper: render options ───────────────────────────────────
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const addOptions = (s: any, showAnswer: boolean) => {
+        validOptions.forEach((opt, oIdx) => {
+          const col = oIdx % 2;
+          const row = Math.floor(oIdx / 2);
+          const x = 0.2 + col * 4.9;
+          const y = 2.1 + row * 1.05;
+          const w = 4.7;
+          const h = 0.85;
+          const isCorrect = showAnswer && opt.is_correct;
+          const label = OPTION_LABELS[oIdx] || String(oIdx + 1);
+
+          s.addShape("rect", {
+            x,
+            y,
+            w,
+            h,
+            fill: { color: isCorrect ? COLORS.correctBg : COLORS.card },
+            line: {
+              color: isCorrect ? COLORS.correctBorder : COLORS.defaultBorder,
+              width: isCorrect ? 2 : 1,
+            },
+          });
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          s.addText(
+            [
+              {
+                text: `${label}.  `,
+                options: {
+                  bold: true,
+                  fontSize: 13,
+                  color: isCorrect ? COLORS.correctText : COLORS.accent,
+                  fontFace: "Calibri",
+                } as any,
+              },
+              {
+                text: opt.option_text,
+                options: {
+                  bold: isCorrect,
+                  fontSize: 12,
+                  color: isCorrect ? COLORS.correctText : COLORS.optionText,
+                  fontFace: "Calibri",
+                } as any,
+              },
+            ],
+            {
+              x: x + 0.2,
+              y,
+              w: w - 0.3,
+              h,
+              wrap: true,
+              valign: "middle",
+            },
+          );
+        });
+      };
+
+      // ── SLIDE 1 : Question (no answer reveal) ───────────────────
+      const qSlide = pptx.addSlide();
+      qSlide.background = { color: COLORS.bg };
+      addWatermark(qSlide);
+
+      qSlide.addText(infoText, {
         x: 0.2,
-        y: 0.45,
+        y: 0.05,
         w: 9.6,
-        h: 1.5,
-        fill: { color: COLORS.card },
-        line: { color: COLORS.accent, width: 1.5 },
-      });
-      slide.addText(q.question_text, {
-        x: 0.35,
-        y: 0.5,
-        w: 9.3,
-        h: 1.4,
-        fontSize: 14,
-        bold: true,
-        color: COLORS.questionText,
+        h: 0.35,
+        fontSize: 10,
+        color: COLORS.metaText,
         fontFace: "Calibri",
-        wrap: true,
+        valign: "middle",
+      });
+      addLogo(qSlide);
+      addQuestionBox(qSlide);
+      addOptions(qSlide, false /* no answer highlight */);
+
+      // ── SLIDE 2 : Answer + Solution ──────────────────────────────
+      const aSlide = pptx.addSlide();
+      aSlide.background = { color: COLORS.bg };
+      addWatermark(aSlide);
+
+      // "Answer" badge in top-left
+      aSlide.addShape("rect", {
+        x: 0.2,
+        y: 0.05,
+        w: 1.1,
+        h: 0.3,
+        fill: { color: COLORS.correctBorder },
+        line: { color: COLORS.correctBorder, width: 0 },
+      });
+      aSlide.addText("ANSWER", {
+        x: 0.2,
+        y: 0.05,
+        w: 1.1,
+        h: 0.3,
+        fontSize: 9,
+        bold: true,
+        color: "FFFFFF",
+        fontFace: "Calibri",
+        align: "center",
         valign: "middle",
       });
 
-      // Options — 2 columns, 2 rows
-      const validOptions = q.options || [];
-      validOptions.forEach((opt, oIdx) => {
-        const col = oIdx % 2;
-        const row = Math.floor(oIdx / 2);
-        const x = 0.2 + col * 4.9;
-        const y = 2.1 + row * 1.05;
-        const w = 4.7;
-        const h = 0.85;
-        const isCorrect = opt.is_correct;
-        const label = OPTION_LABELS[oIdx] || String(oIdx + 1);
-
-        // Option card
-        slide.addShape("rect", {
-          x,
-          y,
-          w,
-          h,
-          fill: { color: isCorrect ? COLORS.correctBg : COLORS.card },
-          line: {
-            color: isCorrect ? COLORS.correctBorder : COLORS.defaultBorder,
-            width: isCorrect ? 2 : 1,
-          },
-        });
-
-        // Label + option text as inline fragments (no circle)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        slide.addText(
-          [
-            {
-              text: `${label}.  `,
-              options: {
-                bold: true,
-                fontSize: 13,
-                color: isCorrect ? COLORS.correctText : COLORS.accent,
-                fontFace: "Calibri",
-              } as any,
-            },
-            {
-              text: opt.option_text,
-              options: {
-                bold: isCorrect,
-                fontSize: 12,
-                color: isCorrect ? COLORS.correctText : COLORS.optionText,
-                fontFace: "Calibri",
-              } as any,
-            },
-          ],
-          {
-            x: x + 0.2,
-            y,
-            w: w - 0.3,
-            h,
-            wrap: true,
-            valign: "middle",
-          },
-        );
+      aSlide.addText(infoText, {
+        x: 1.4,
+        y: 0.05,
+        w: 8.4,
+        h: 0.35,
+        fontSize: 10,
+        color: COLORS.metaText,
+        fontFace: "Calibri",
+        valign: "middle",
       });
+      addLogo(aSlide);
+      addQuestionBox(aSlide);
+      addOptions(aSlide, true /* highlight correct answer */);
 
-      // Solution / explanation (if available)
-      if (
+      // Solution / explanation
+      const hasSolution =
         q.solution &&
         q.solution.trim() &&
-        q.solution !== "Ans: Self Explanatory"
-      ) {
-        const solutionText = q.solution.replace(/^Ans:\s*/i, "").trim();
-        if (solutionText.length > 0 && solutionText !== "Self Explanatory") {
-          slide.addShape("rect", {
+        q.solution !== "Ans: Self Explanatory";
+      const solutionText = hasSolution
+        ? q.solution!.replace(/^Ans:\s*/i, "").trim()
+        : "";
+      if (solutionText && solutionText !== "Self Explanatory") {
+        aSlide.addShape("rect", {
+          x: 0.2,
+          y: 4.25,
+          w: 9.6,
+          h: 1.25,
+          fill: { color: COLORS.solutionBg },
+          line: { color: "F59E0B", width: 1 },
+        });
+        aSlide.addText("Explanation: ", {
+          x: 0.35,
+          y: 4.27,
+          w: 1.3,
+          h: 0.35,
+          fontSize: 10,
+          bold: true,
+          color: COLORS.solutionText,
+          fontFace: "Calibri",
+        });
+        aSlide.addText(solutionText, {
+          x: 0.35,
+          y: 4.6,
+          w: 9.3,
+          h: 0.8,
+          fontSize: 10,
+          color: COLORS.solutionText,
+          fontFace: "Calibri",
+          wrap: true,
+          valign: "top",
+        });
+      } else {
+        // No solution — show which option is correct as a simple label
+        const correctOpt = validOptions.find((o) => o.is_correct);
+        if (correctOpt) {
+          const correctIdx = validOptions.indexOf(correctOpt);
+          const correctLabel =
+            OPTION_LABELS[correctIdx] || String(correctIdx + 1);
+          aSlide.addShape("rect", {
             x: 0.2,
             y: 4.25,
             w: 9.6,
-            h: 1.2,
-            fill: { color: COLORS.solutionBg },
-            line: { color: "F59E0B", width: 1 },
+            h: 0.7,
+            fill: { color: COLORS.correctBg },
+            line: { color: COLORS.correctBorder, width: 1 },
           });
-          slide.addText("Explanation: ", {
-            x: 0.35,
-            y: 4.27,
-            w: 1.3,
-            h: 0.35,
-            fontSize: 10,
-            bold: true,
-            color: COLORS.solutionText,
-            fontFace: "Calibri",
-          });
-          slide.addText(solutionText, {
-            x: 0.35,
-            y: 4.6,
-            w: 9.3,
-            h: 0.75,
-            fontSize: 10,
-            color: COLORS.solutionText,
-            fontFace: "Calibri",
-            wrap: true,
-            valign: "top",
-          });
+          aSlide.addText(
+            `Correct Answer: ${correctLabel}. ${correctOpt.option_text}`,
+            {
+              x: 0.35,
+              y: 4.27,
+              w: 9.3,
+              h: 0.6,
+              fontSize: 11,
+              bold: true,
+              color: COLORS.correctText,
+              fontFace: "Calibri",
+              valign: "middle",
+            },
+          );
         }
       }
     });
