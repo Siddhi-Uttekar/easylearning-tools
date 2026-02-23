@@ -1,296 +1,348 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as PPTX from "pptxgenjs";
 import path from "path";
-import { marked } from "marked";
 
-// 'pptxgenjs' does not export Slide type, so we use 'any' here
+interface Option {
+  option_id: number;
+  option_text: string;
+  is_correct: boolean;
+}
+
+interface Question {
+  question_id: number;
+  question_text: string;
+  solution?: string;
+  difficulty_level?: string;
+  chapter_name?: string;
+  subject?: string;
+  standard?: string;
+  options: Option[];
+}
+
+interface Metadata {
+  chapter?: string;
+  subject?: string;
+  standard?: string;
+  username?: string;
+  difficultyFilters?: string;
+  totalCount?: number;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const addWatermark = (slide: any) => {
   slide.addText("EasyLearning", {
-    x: 0.5,
-    y: 3,
-    w: 1.92,
-    h: 0.5,
-    fontSize: 22,
+    x: 0,
+    y: 2.5,
+    w: 10,
+    h: 0.8,
+    fontSize: 52,
     color: "F1F5F9",
     align: "center",
     valign: "middle",
     fontFace: "Calibri",
     bold: true,
-    rotate: -50,
+    rotate: -30,
+    transparency: 80,
   });
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const addLogo = (slide: any) => {
-  slide.addImage({
-    path: path.join(process.cwd(), "public/icon.png"),
-    x: 2.1,
-    y: 0.15,
-    w: 0.8,
-    h: 0.8,
-  });
+  const logoPath = path.join(process.cwd(), "public/icon.png");
+  try {
+    slide.addImage({
+      path: logoPath,
+      x: 9.0,
+      y: 0,
+      w: 0.6,
+      h: 0.6,
+    });
+  } catch {
+    // Logo file may not exist; skip silently
+  }
 };
 
-// 🔹 Utility: convert Markdown tokens → pptxgenjs text fragments
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mdToPptxText = (tokens: any[], highlightKeywords: string[]) => {
-  // pptxgenjs does not export TextPropsOptions type, so we use 'any' here
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fragments: { text: string; options: any }[] = [];
-
-  tokens.forEach((token) => {
-    if (token.type === "paragraph" || token.type === "text") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const text = (token as any).text || "";
-      const isHighlighted = highlightKeywords.some((kw) =>
-        text.toLowerCase().includes(kw.toLowerCase())
-      );
-
-      fragments.push({
-        text: text + "\n",
-        options: {
-          bold: /\*\*[^*]+\*\*/.test(text) || isHighlighted,
-          italic: /\*[^*]+\*/.test(text),
-          color: isHighlighted ? "E53E3E" : "2D3748",
-          fontFace: "Calibri",
-          fontSize: 18,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any,
-      });
-    }
-
-      if (token.type === "list") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (token as any).items.forEach((item: any) => {
-          const text = item.text || "";
-          const isHighlighted = highlightKeywords.some((kw) =>
-            text.toLowerCase().includes(kw.toLowerCase())
-          );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          fragments.push({
-            text: `• ${text}\n`,
-            options: {
-              bold: isHighlighted,
-              color: isHighlighted ? "E53E3E" : "2D3748",
-              fontFace: "Calibri",
-              fontSize: 18,
-            } as any,
-          });
-        });
-      }
-
-      if (token.type === "codespan") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        fragments.push({
-          text: (token as any).text,
-          options: {
-            fontFace: "Courier New",
-            fontSize: 18,
-            color: "1A202C",
-            bold: true,
-            italic: false,
-          } as any,
-        });
-      }
-
-      if (token.type === "blockquote") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        fragments.push({
-          text: `"${(token as any).text}"\n`,
-          options: {
-            italic: true,
-            color: "4A5568",
-            fontFace: "Calibri",
-            fontSize: 18,
-          } as any,
-        });
-      }
-    });
-
-    return fragments;
-  };
+const OPTION_LABELS = ["A", "B", "C", "D", "E"];
+const COLORS = {
+  bg: "F8FAFC",
+  card: "FFFFFF",
+  headerBg: "1E40AF",
+  headerText: "FFFFFF",
+  questionText: "1E293B",
+  optionText: "334155",
+  correctBg: "DCFCE7",
+  correctText: "166534",
+  correctBorder: "22C55E",
+  defaultBorder: "CBD5E1",
+  solutionBg: "FEF3C7",
+  solutionText: "92400E",
+  metaText: "64748B",
+  accent: "3B82F6",
+};
 
 export async function POST(request: NextRequest) {
   try {
-    const { jsonData, title } = await request.json();
+    const body = await request.json();
+    const { questions, metadata } = body as {
+      questions: Question[];
+      metadata: Metadata;
+    };
 
-    if (!jsonData) {
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return NextResponse.json(
-        { error: "No JSON data provided" },
-        { status: 400 }
+        { error: "No questions provided" },
+        { status: 400 },
       );
     }
 
-    const parsed = JSON.parse(jsonData);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let validFlashcards: any[] = [];
-    let highlightKeywords: string[] = [];
-
-    // Parse flashcards and keywords exactly like PPTProcessor
-    if (Array.isArray(parsed)) {
-      validFlashcards = parsed.filter(
-        (item) =>
-          typeof item === "object" &&
-          typeof item.front === "string" &&
-          typeof item.back === "string"
-      );
-    } else if (typeof parsed === "object" && parsed !== null) {
-      if (Array.isArray(parsed.flashcards)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        validFlashcards = parsed.flashcards.filter(
-          (item: any) =>
-            typeof item === "object" &&
-            typeof item.front === "string" &&
-            typeof item.back === "string"
-        );
-      }
-      if (Array.isArray(parsed.highlightKeywords)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        highlightKeywords = parsed.highlightKeywords.map((kw: any) =>
-          String(kw)
-        );
-      }
-    }
-
-    if (validFlashcards.length === 0) {
-      return NextResponse.json(
-        { error: "No valid flashcards found" },
-        { status: 400 }
-      );
-    }
-
-    // Create presentation exactly like PPTProcessor
     const pptx = new PPTX.default();
-    pptx.defineLayout({ name: "FLASHCARD", width: 2.92, height: 6.25 });
-    pptx.layout = "FLASHCARD";
+    // Standard widescreen layout
+    pptx.defineLayout({ name: "WIDE", width: 10, height: 5.625 });
+    pptx.layout = "WIDE";
 
-    // 🔹 Title slide - exactly like PPTProcessor
+    // ── Title slide ──────────────────────────────────────────────
     const titleSlide = pptx.addSlide();
-    titleSlide.background = { color: "F8F9FA" };
-    titleSlide.addShape("rect", {
-      x: 0.1,
-      y: 0.1,
-      w: 2.72,
-      h: 6.05,
-      fill: { color: "FFFFFF" },
-    });
+    titleSlide.background = { color: COLORS.bg };
     addWatermark(titleSlide);
-    addLogo(titleSlide);
-    titleSlide.addText(title || "Flashcard Set", {
-      x: 0.2,
-      y: 1.5,
-      w: 2.52,
-      h: 1.5,
-      fontSize: 28,
+
+    // EasyLearning branding
+    titleSlide.addText("EasyLearning", {
+      x: 0.3,
+      y: 0.15,
+      w: 3,
+      h: 0.5,
+      fontSize: 16,
       bold: true,
-      color: "2D3748",
-      align: "center",
+      color: COLORS.accent,
       fontFace: "Calibri",
     });
-    titleSlide.addText(`${validFlashcards.length} Cards`, {
-      x: 0.2,
-      y: 3.2,
-      w: 2.52,
-      h: 0.8,
-      fontSize: 18,
-      color: "718096",
-      align: "center",
+    addLogo(titleSlide);
+
+    // Chapter title
+    titleSlide.addText(metadata?.chapter || "MCQ Practice", {
+      x: 0.5,
+      y: 0.15,
+      w: 9,
+      h: 0.6,
+      fontSize: 24,
+      bold: true,
+      color: COLORS.questionText,
       fontFace: "Calibri",
+      align: "center",
     });
 
-    // 🔹 Flashcards - exactly like PPTProcessor
-    validFlashcards.forEach((card) => {
-      // Front slide
-      const frontSlide = pptx.addSlide();
-      frontSlide.background = { color: "F8F9FA" };
-      frontSlide.addShape("rect", {
-        x: 0.1,
-        y: 0.1,
-        w: 2.72,
-        h: 6.05,
-        fill: { color: "FFFFFF" },
+    // Info cards
+    const infoItems = [
+      { label: "Subject", value: metadata?.subject || "—" },
+      { label: "Standard", value: `Class ${metadata?.standard || "—"}` },
+      { label: "Questions", value: String(questions.length) },
+      { label: "Difficulty", value: metadata?.difficultyFilters || "Mixed" },
+    ];
+    infoItems.forEach((item, i) => {
+      const x = 0.5 + i * 2.3;
+      titleSlide.addShape("rect", {
+        x,
+        y: 0.9,
+        w: 2.0,
+        h: 1.2,
+        fill: { color: COLORS.card },
+        line: { color: COLORS.accent, width: 2 },
       });
-      addWatermark(frontSlide);
-      addLogo(frontSlide);
-      frontSlide.addText(card.front, {
-        x: 0.2,
-        y: 1.5,
-        w: 2.52,
-        h: 3,
-        fontSize: 22,
-        color: "2D3748",
-        valign: "middle",
-        align: "center",
-        wrap: true,
+      titleSlide.addText(item.label, {
+        x,
+        y: 0.95,
+        w: 2.0,
+        h: 0.4,
+        fontSize: 11,
+        color: COLORS.metaText,
         fontFace: "Calibri",
+        align: "center",
       });
-      frontSlide.addShape("rect", {
-        x: 0.7,
-        y: 5,
-        w: 1.52,
-        h: 0.6,
-        fill: { color: "FFFFFF" },
-        line: { color: "4A90E2", width: 2 },
-      });
-      frontSlide.addText("Solution", {
-        x: 0.7,
-        y: 5,
-        w: 1.52,
-        h: 0.6,
+      titleSlide.addText(item.value, {
+        x,
+        y: 1.4,
+        w: 2.0,
+        h: 0.5,
         fontSize: 16,
-        color: "4A90E2",
-        align: "center",
-        valign: "middle",
+        bold: true,
+        color: COLORS.questionText,
         fontFace: "Calibri",
+        align: "center",
       });
+    });
 
-      // Back slide
-      const backSlide = pptx.addSlide();
-      backSlide.background = { color: "F8F9FA" };
-      backSlide.addShape("rect", {
-        x: 0.1,
-        y: 0.1,
-        w: 2.72,
-        h: 6.05,
-        fill: { color: "FFFFFF" },
-      });
-      addWatermark(backSlide);
-      addLogo(backSlide);
+    titleSlide.addText("Prepared by EasyLearning Tools", {
+      x: 0,
+      y: 5.1,
+      w: 10,
+      h: 0.4,
+      fontSize: 11,
+      color: COLORS.metaText,
+      fontFace: "Calibri",
+      align: "center",
+      italic: true,
+    });
 
-      // Process markdown exactly like PPTProcessor
-      const mdTokens = marked.lexer(
-        typeof card.back === "string" ? card.back : ""
+    // ── One slide per question ────────────────────────────────────
+    questions.forEach((q, idx) => {
+      const slide = pptx.addSlide();
+      slide.background = { color: COLORS.bg };
+      addWatermark(slide);
+
+      // Q info line (plain dark text, no bar)
+      slide.addText(
+        `Q${idx + 1}  •  ${metadata?.chapter || ""}  •  ${metadata?.subject || ""}  •  Class ${metadata?.standard || ""}`,
+        {
+          x: 0.2,
+          y: 0.05,
+          w: 9.6,
+          h: 0.35,
+          fontSize: 10,
+          color: COLORS.metaText,
+          fontFace: "Calibri",
+          valign: "middle",
+        },
       );
-      const fragments = mdToPptxText(mdTokens, highlightKeywords);
+      addLogo(slide);
 
-      backSlide.addText(fragments, {
+      // Question text box
+      slide.addShape("rect", {
         x: 0.2,
-        y: 1.5,
-        w: 2.52,
-        h: 5,
-        wrap: true,
-        valign: "top",
+        y: 0.45,
+        w: 9.6,
+        h: 1.5,
+        fill: { color: COLORS.card },
+        line: { color: COLORS.accent, width: 1.5 },
       });
+      slide.addText(q.question_text, {
+        x: 0.35,
+        y: 0.5,
+        w: 9.3,
+        h: 1.4,
+        fontSize: 14,
+        bold: true,
+        color: COLORS.questionText,
+        fontFace: "Calibri",
+        wrap: true,
+        valign: "middle",
+      });
+
+      // Options — 2 columns, 2 rows
+      const validOptions = q.options || [];
+      validOptions.forEach((opt, oIdx) => {
+        const col = oIdx % 2;
+        const row = Math.floor(oIdx / 2);
+        const x = 0.2 + col * 4.9;
+        const y = 2.1 + row * 1.05;
+        const w = 4.7;
+        const h = 0.85;
+        const isCorrect = opt.is_correct;
+        const label = OPTION_LABELS[oIdx] || String(oIdx + 1);
+
+        // Option card
+        slide.addShape("rect", {
+          x,
+          y,
+          w,
+          h,
+          fill: { color: isCorrect ? COLORS.correctBg : COLORS.card },
+          line: {
+            color: isCorrect ? COLORS.correctBorder : COLORS.defaultBorder,
+            width: isCorrect ? 2 : 1,
+          },
+        });
+
+        // Label + option text as inline fragments (no circle)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        slide.addText(
+          [
+            {
+              text: `${label}.  `,
+              options: {
+                bold: true,
+                fontSize: 13,
+                color: isCorrect ? COLORS.correctText : COLORS.accent,
+                fontFace: "Calibri",
+              } as any,
+            },
+            {
+              text: opt.option_text,
+              options: {
+                bold: isCorrect,
+                fontSize: 12,
+                color: isCorrect ? COLORS.correctText : COLORS.optionText,
+                fontFace: "Calibri",
+              } as any,
+            },
+          ],
+          {
+            x: x + 0.2,
+            y,
+            w: w - 0.3,
+            h,
+            wrap: true,
+            valign: "middle",
+          },
+        );
+      });
+
+      // Solution / explanation (if available)
+      if (
+        q.solution &&
+        q.solution.trim() &&
+        q.solution !== "Ans: Self Explanatory"
+      ) {
+        const solutionText = q.solution.replace(/^Ans:\s*/i, "").trim();
+        if (solutionText.length > 0 && solutionText !== "Self Explanatory") {
+          slide.addShape("rect", {
+            x: 0.2,
+            y: 4.25,
+            w: 9.6,
+            h: 1.2,
+            fill: { color: COLORS.solutionBg },
+            line: { color: "F59E0B", width: 1 },
+          });
+          slide.addText("Explanation: ", {
+            x: 0.35,
+            y: 4.27,
+            w: 1.3,
+            h: 0.35,
+            fontSize: 10,
+            bold: true,
+            color: COLORS.solutionText,
+            fontFace: "Calibri",
+          });
+          slide.addText(solutionText, {
+            x: 0.35,
+            y: 4.6,
+            w: 9.3,
+            h: 0.75,
+            fontSize: 10,
+            color: COLORS.solutionText,
+            fontFace: "Calibri",
+            wrap: true,
+            valign: "top",
+          });
+        }
+      }
     });
 
     const buffer = await pptx.write({ outputType: "nodebuffer" });
+    const chapter = metadata?.chapter?.replace(/[^a-zA-Z0-9]/g, "_") || "MCQ";
+    const filename = `${chapter}_${questions.length}Q_EasyLearning.pptx`;
 
     return new Response(buffer as ArrayBuffer, {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "Content-Disposition": `attachment; filename="${
-          title?.replace(/[^a-zA-Z0-9]/g, "_") || "flashcards"
-        }.pptx"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {
     console.error("PowerPoint generation error:", error);
     return NextResponse.json(
       { error: `Failed to generate PowerPoint: ${error}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

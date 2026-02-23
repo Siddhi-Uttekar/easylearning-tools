@@ -241,8 +241,8 @@ export default function MCQGenerator() {
         difficultyFilter === "all" ? "" : `&difficulty=${difficultyFilter}`;
       const response = await fetch(
         `/api/questions?chapter=${encodeURIComponent(
-          chapterName
-        )}${difficultyParam}&limit=${questionLimit}&offset=${offset}`
+          chapterName,
+        )}${difficultyParam}&limit=${questionLimit}&offset=${offset}`,
       );
       if (!response.ok) {
         const errorData = await response.json();
@@ -268,7 +268,13 @@ export default function MCQGenerator() {
     if (selectedChapters.length > 0) {
       fetchQuestions();
     }
-  }, [selectedChapters, difficultyFilter, questionLimit, offset, fetchQuestions]);
+  }, [
+    selectedChapters,
+    difficultyFilter,
+    questionLimit,
+    offset,
+    fetchQuestions,
+  ]);
 
   // Parse MCQ text when it changes
   useEffect(() => {
@@ -290,17 +296,20 @@ export default function MCQGenerator() {
     (chapter) =>
       chapter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       chapter.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chapter.standard.includes(searchTerm)
+      chapter.standard.includes(searchTerm),
   );
 
   // Group chapters by subject
-  const chaptersBySubject = filteredChapters.reduce((acc, chapter) => {
-    if (!acc[chapter.subject]) {
-      acc[chapter.subject] = [];
-    }
-    acc[chapter.subject].push(chapter);
-    return acc;
-  }, {} as Record<string, Chapter[]>);
+  const chaptersBySubject = filteredChapters.reduce(
+    (acc, chapter) => {
+      if (!acc[chapter.subject]) {
+        acc[chapter.subject] = [];
+      }
+      acc[chapter.subject].push(chapter);
+      return acc;
+    },
+    {} as Record<string, Chapter[]>,
+  );
 
   // Parse MCQ text
   const parseMCQText = (text: string): ParsedQuestion[] => {
@@ -367,7 +376,7 @@ export default function MCQGenerator() {
   const selectAllQuestions = () => {
     setSelectedQuestions((prev) => {
       const allSelected = availableQuestions.every((q) =>
-        prev.some((pq) => pq.question_id === q.question_id)
+        prev.some((pq) => pq.question_id === q.question_id),
       );
       if (allSelected) {
         return [];
@@ -375,13 +384,12 @@ export default function MCQGenerator() {
         return [
           ...prev,
           ...availableQuestions.filter(
-            (q) => !prev.some((pq) => pq.question_id === q.question_id)
+            (q) => !prev.some((pq) => pq.question_id === q.question_id),
           ),
         ];
       }
     });
   };
-
 
   // Add selected questions to MCQ text
   const addSelectedQuestionsToMCQ = () => {
@@ -441,7 +449,7 @@ ${question.options
       setSuccess("Document generated successfully!");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsLoading(false);
@@ -451,7 +459,8 @@ ${question.options
   // Handle PPT generation
   const handleGeneratePPT = async () => {
     let questionsToGenerate: Question[] = [];
-    const sourceChapter = selectedChapters.length > 0 ? selectedChapters[0] : null;
+    const sourceChapter =
+      selectedChapters.length > 0 ? selectedChapters[0] : null;
 
     if (parsedQuestions.length > 0) {
       questionsToGenerate = parsedQuestions.map((pq, index) => {
@@ -486,7 +495,7 @@ ${question.options
 
     if (questionsToGenerate.length === 0) {
       setPptError(
-        "No questions to generate. Select from a chapter or enter manually."
+        "No questions to generate. Select from a chapter or enter manually.",
       );
       return;
     }
@@ -536,7 +545,7 @@ ${question.options
     } catch (err) {
       console.error("Failed to generate PowerPoint:", err);
       setPptError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsGeneratingPPT(false);
@@ -553,11 +562,10 @@ ${question.options
     setPptSuccess("");
   };
 
-
   // Add new question template
   const addNewQuestion = () => {
     setMcqText(
-      (prev) => prev + "\n[Q] \n[O] \n[O] \n[O] \n[O] \n[A] \n[S] \n[M] \n"
+      (prev) => prev + "\n[Q] \n[O] \n[O] \n[O] \n[O] \n[A] \n[S] \n[M] \n",
     );
   };
 
@@ -613,7 +621,7 @@ ${question.options
                                 key={chapter.originalId}
                                 className={`flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-muted ${
                                   selectedChapters.some(
-                                    (c) => c.originalId === chapter.originalId
+                                    (c) => c.originalId === chapter.originalId,
                                   )
                                     ? "bg-primary/10"
                                     : ""
@@ -625,14 +633,15 @@ ${question.options
                                     className={`w-4 h-4 rounded border flex items-center justify-center ${
                                       selectedChapters.some(
                                         (c) =>
-                                          c.originalId === chapter.originalId
+                                          c.originalId === chapter.originalId,
                                       )
                                         ? "bg-primary border-primary text-primary-foreground"
                                         : "border-muted-foreground"
                                     }`}
                                   >
                                     {selectedChapters.some(
-                                      (c) => c.originalId === chapter.originalId
+                                      (c) =>
+                                        c.originalId === chapter.originalId,
                                     ) && <IconCheck className="h-3 w-3" />}
                                   </div>
                                   <span className="text-sm">
@@ -654,7 +663,7 @@ ${question.options
                             ))}
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </ScrollArea>
                 </div>
@@ -694,14 +703,6 @@ ${question.options
                           <SelectItem value="hard">Hard</SelectItem>
                         </SelectContent>
                       </Select>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Limit:
-                        </span>
-                        <span className="text-sm font-medium">
-                          {questionLimit}
-                        </span>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -735,20 +736,56 @@ ${question.options
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="question-limit" className="text-sm">
+                        <Label
+                          htmlFor="question-limit"
+                          className="text-sm whitespace-nowrap"
+                        >
                           Questions per load:
                         </Label>
                         <Slider
                           id="question-limit"
-                          min={5}
-                          max={50}
-                          step={5}
+                          min={1}
+                          max={
+                            selectedChapters.reduce(
+                              (sum, ch) =>
+                                sum + (parseInt(ch.question_count) || 50),
+                              0,
+                            ) || 50
+                          }
+                          step={1}
                           value={[questionLimit]}
                           onValueChange={(value) => {
                             setQuestionLimit(value[0]);
                             setOffset(0);
                           }}
-                          className="w-32"
+                          className="w-28"
+                        />
+                        <Input
+                          type="number"
+                          min={1}
+                          max={
+                            selectedChapters.reduce(
+                              (sum, ch) =>
+                                sum + (parseInt(ch.question_count) || 50),
+                              0,
+                            ) || 50
+                          }
+                          value={questionLimit}
+                          onChange={(e) => {
+                            const max =
+                              selectedChapters.reduce(
+                                (sum, ch) =>
+                                  sum + (parseInt(ch.question_count) || 50),
+                                0,
+                              ) || 50;
+                            const val = Math.max(
+                              1,
+                              Math.min(max, parseInt(e.target.value) || 1),
+                            );
+                            setQuestionLimit(val);
+                            setOffset(0);
+                          }}
+                          className="w-16 h-8 text-center text-sm"
                         />
                       </div>
                     </div>
@@ -770,7 +807,7 @@ ${question.options
                               key={question.question_id}
                               className={`flex items-start gap-3 p-3 rounded-md cursor-pointer hover:bg-muted ${
                                 selectedQuestions.some(
-                                  (q) => q.question_id === question.question_id
+                                  (q) => q.question_id === question.question_id,
                                 )
                                   ? "bg-primary/10"
                                   : ""
@@ -781,21 +818,21 @@ ${question.options
                                 className={`w-5 h-5 rounded border flex items-center justify-center mt-0.5 ${
                                   selectedQuestions.some(
                                     (q) =>
-                                      q.question_id === question.question_id
+                                      q.question_id === question.question_id,
                                   )
                                     ? "bg-primary border-primary text-primary-foreground"
                                     : "border-muted-foreground"
                                 }`}
                               >
                                 {selectedQuestions.some(
-                                  (q) => q.question_id === question.question_id
+                                  (q) => q.question_id === question.question_id,
                                 ) && <IconCheck className="h-3 w-3" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
                                   {question.question_text.replace(
                                     /<[^>]*>/g,
-                                    ""
+                                    "",
                                   )}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
@@ -804,8 +841,8 @@ ${question.options
                                       question.difficulty_level === "easy"
                                         ? "default"
                                         : question.difficulty_level === "medium"
-                                        ? "secondary"
-                                        : "destructive"
+                                          ? "secondary"
+                                          : "destructive"
                                     }
                                     className="text-xs"
                                   >
@@ -1093,7 +1130,8 @@ ${question.options
                       onClick={handleGeneratePPT}
                       disabled={
                         isGeneratingPPT ||
-                        (selectedQuestions.length === 0 && parsedQuestions.length === 0)
+                        (selectedQuestions.length === 0 &&
+                          parsedQuestions.length === 0)
                       }
                       variant="outline"
                     >

@@ -8,7 +8,6 @@ const rateLimiter = new RateLimiterMemory({
   duration: 60 * 15,
 });
 
-
 const sendOTPViaAisensy = async (phone: string, otp: string) => {
   // Skip actual SMS sending in non-production environments
   if (process.env.NODE_ENV !== "production") {
@@ -18,7 +17,7 @@ const sendOTPViaAisensy = async (phone: string, otp: string) => {
 
   const AISENSY_API_URL = process.env.AISENSY_API_URL!;
   const AISENSY_API_KEY = process.env.AISENSY_API_KEY!;
-  
+
   const payload = {
     apiKey: AISENSY_API_KEY,
     campaignName: "Verify OTP",
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "Too many OTP requests. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
     if (!phone) {
       return NextResponse.json(
         { error: "Phone number is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -91,12 +90,12 @@ export async function POST(request: NextRequest) {
     if (!/^\+\d{10,15}$/.test(formattedPhone)) {
       return NextResponse.json(
         { error: "Invalid phone number format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(otp);
     const expiresAt = new Date(Date.now() + 5 * 60000);
 
     // Save OTP to database using Prisma
@@ -107,7 +106,6 @@ export async function POST(request: NextRequest) {
         expiresAt,
       },
     });
-
 
     // In development, show the OTP in the response
     if (process.env.NODE_ENV !== "production") {
@@ -131,14 +129,14 @@ export async function POST(request: NextRequest) {
       console.error("Aisensy API error:", aisensyResponse);
       return NextResponse.json(
         { error: "Failed to send OTP. Please try again." },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
     console.error("Send OTP error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
