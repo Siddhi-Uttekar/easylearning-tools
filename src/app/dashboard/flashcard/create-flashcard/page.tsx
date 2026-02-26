@@ -14,6 +14,10 @@ import {
   CheckCircle,
   BookOpen,
   Settings,
+  Download,
+  Loader2,
+  FileJson,
+  AlertCircle,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import PPTProcessor from "./PPTuploader";
@@ -72,6 +76,65 @@ export default function FlashcardCreator() {
   const [standard, setStandard] = useState("");
   const [subject, setSubject] = useState("");
 
+  // ── Generate PPT state ────────────────────────────────────────
+  const [pptJson, setPptJson] = useState("");
+  const [pptJsonError, setPptJsonError] = useState("");
+  const [isGeneratingPpt, setIsGeneratingPpt] = useState(false);
+
+  const generatePpt = useCallback(async () => {
+    setPptJsonError("");
+    let flashcards: { front: string; back: string }[];
+    try {
+      const parsed = JSON.parse(pptJson);
+      if (
+        !Array.isArray(parsed) ||
+        parsed.length === 0 ||
+        !("front" in parsed[0])
+      ) {
+        setPptJsonError('Expected format: [{"front":"...","back":"..."}]');
+        return;
+      }
+      flashcards = parsed;
+    } catch {
+      setPptJsonError("Invalid JSON. Please check the format.");
+      return;
+    }
+    setIsGeneratingPpt(true);
+    try {
+      const response = await fetch("/api/generate-flashcard-ppt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flashcards,
+          metadata: {
+            title: title || "Flashcards",
+            subject,
+            standard,
+          },
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to generate PPT");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (title || "Flashcards").replace(/[^a-zA-Z0-9]/g, "_");
+      a.href = url;
+      a.download = `${safeName}_${flashcards.length}cards_EasyLearning.pptx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PPT downloaded successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate PPT",
+      );
+    } finally {
+      setIsGeneratingPpt(false);
+    }
+  }, [pptJson, title, subject, standard]);
+
   const handleThumbnailUpload = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -87,7 +150,7 @@ export default function FlashcardCreator() {
         }
       }
     },
-    []
+    [],
   );
 
   const saveFlashcardSet = useCallback(
@@ -137,7 +200,7 @@ export default function FlashcardCreator() {
         toast.success(
           publish
             ? "Flashcard set published successfully!"
-            : "Flashcard set saved successfully!"
+            : "Flashcard set saved successfully!",
         );
 
         router.push(`/dashboard/flashcard/${newFlashcardSet.id}`);
@@ -157,7 +220,7 @@ export default function FlashcardCreator() {
       subject,
       extractedSlides,
       router,
-    ]
+    ],
   );
   const getSubjectOptions = () => {
     if (standard === "9th" || standard === "10th") return sscSubjects;
@@ -281,7 +344,7 @@ export default function FlashcardCreator() {
                       {standards
                         .filter(
                           (s) =>
-                            s.value === "11th-sci" || s.value === "12th-sci"
+                            s.value === "11th-sci" || s.value === "12th-sci",
                         )
                         .map((s) => (
                           <SelectItem key={s.value} value={s.value}>
@@ -385,6 +448,69 @@ export default function FlashcardCreator() {
               >
                 <Upload className="h-4 w-4 mr-2" />
                 {isSaving ? "Publishing..." : "Publish"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Generate PPT Card */}
+          <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-base font-semibold">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                  <Presentation className="h-4 w-4" />
+                </div>
+                Generate Flashcard PPT
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Paste a{" "}
+                <code className="bg-muted px-1 rounded text-[11px]">
+                  [{"{front, back}"}]
+                </code>{" "}
+                JSON array below. Title, subject &amp; standard are taken from
+                the form above.
+              </p>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="ppt-json"
+                  className="text-xs font-medium flex items-center gap-1"
+                >
+                  <FileJson size={12} /> Flashcards JSON
+                </Label>
+                <Textarea
+                  id="ppt-json"
+                  value={pptJson}
+                  onChange={(e) => {
+                    setPptJson(e.target.value);
+                    setPptJsonError("");
+                  }}
+                  placeholder={`[\n  {"front": "Q?", "back": "Answer."},\n  ...\n]`}
+                  className="font-mono text-xs min-h-[140px] resize-none"
+                />
+              </div>
+              {pptJsonError && (
+                <div className="flex items-start gap-2 text-destructive text-xs bg-destructive/10 rounded-lg p-2">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                  {pptJsonError}
+                </div>
+              )}
+              <Button
+                className="w-full transition-all hover:scale-[1.02]"
+                disabled={!pptJson.trim() || isGeneratingPpt}
+                onClick={generatePpt}
+              >
+                {isGeneratingPpt ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} className="mr-2" />
+                    Generate &amp; Download PPT
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

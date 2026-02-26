@@ -87,18 +87,40 @@ const SAMPLE_MCQ: McqJsonData = {
       solution:
         "The angle of incidence equals the angle of reflection. Both angles are measured from the normal to the surface.",
       options: [
-        { option_id: 1, option_text: "Angle of incidence = Angle of reflection", is_correct: true },
-        { option_id: 2, option_text: "Angle of incidence > Angle of reflection", is_correct: false },
-        { option_id: 3, option_text: "Angle of incidence < Angle of reflection", is_correct: false },
-        { option_id: 4, option_text: "No fixed relationship", is_correct: false },
+        {
+          option_id: 1,
+          option_text: "Angle of incidence = Angle of reflection",
+          is_correct: true,
+        },
+        {
+          option_id: 2,
+          option_text: "Angle of incidence > Angle of reflection",
+          is_correct: false,
+        },
+        {
+          option_id: 3,
+          option_text: "Angle of incidence < Angle of reflection",
+          is_correct: false,
+        },
+        {
+          option_id: 4,
+          option_text: "No fixed relationship",
+          is_correct: false,
+        },
       ],
     },
   ],
 };
 
 const SAMPLE_FLASHCARD: FlashcardItem[] = [
-  { front: "What are Angiosperms?", back: "Flowering plants that produce seeds enclosed within fruits." },
-  { front: "What are Hydrophytes?", back: "Plants that grow in aquatic habitats, e.g., Hydrilla." },
+  {
+    front: "What are Angiosperms?",
+    back: "Flowering plants that produce seeds enclosed within fruits.",
+  },
+  {
+    front: "What are Hydrophytes?",
+    back: "Plants that grow in aquatic habitats, e.g., Hydrilla.",
+  },
 ];
 
 export default function JsonToPptPage() {
@@ -111,7 +133,9 @@ export default function JsonToPptPage() {
   const [jsonText, setJsonText] = useState("");
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat>(null);
   const [mcqData, setMcqData] = useState<McqJsonData | null>(null);
-  const [flashcardData, setFlashcardData] = useState<FlashcardItem[] | null>(null);
+  const [flashcardData, setFlashcardData] = useState<FlashcardItem[] | null>(
+    null,
+  );
   const [parseError, setParseError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -139,7 +163,9 @@ export default function JsonToPptPage() {
       ) {
         setFlashcardData(parsed as FlashcardItem[]);
         setDetectedFormat("flashcard");
-        toast.success(`Detected Flashcard format — ${parsed.length} cards loaded.`);
+        toast.success(
+          `Detected Flashcard format — ${parsed.length} cards loaded.`,
+        );
         return;
       }
 
@@ -147,7 +173,9 @@ export default function JsonToPptPage() {
       if (parsed.questions && Array.isArray(parsed.questions)) {
         setMcqData(parsed as McqJsonData);
         setDetectedFormat("mcq");
-        toast.success(`Detected MCQ format — ${parsed.questions.length} questions loaded.`);
+        toast.success(
+          `Detected MCQ format — ${parsed.questions.length} questions loaded.`,
+        );
         return;
       }
 
@@ -218,7 +246,9 @@ export default function JsonToPptPage() {
           : JSON.stringify(SAMPLE_FLASHCARD, null, 2);
       setJsonText(text);
       parseJson(text);
-      setFileName(format === "mcq" ? "sample_mcq.json" : "sample_flashcard.json");
+      setFileName(
+        format === "mcq" ? "sample_mcq.json" : "sample_flashcard.json",
+      );
     },
     [parseJson],
   );
@@ -277,8 +307,8 @@ export default function JsonToPptPage() {
       const a = document.createElement("a");
       const baseName =
         detectedFormat === "mcq"
-          ? (mcqData?.metadata?.chapter?.replace(/[^a-zA-Z0-9]/g, "_") || "MCQ") +
-            `_${mcqData?.questions.length}Q`
+          ? (mcqData?.metadata?.chapter?.replace(/[^a-zA-Z0-9]/g, "_") ||
+              "MCQ") + `_${mcqData?.questions.length}Q`
           : (fcTitle || "Flashcards").replace(/[^a-zA-Z0-9]/g, "_") +
             `_${flashcardData?.length}cards`;
       a.href = url;
@@ -327,7 +357,11 @@ export default function JsonToPptPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => loadSample("flashcard")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadSample("flashcard")}
+          >
             <BookOpen size={13} className="mr-1" /> Flashcard Sample
           </Button>
           <Button variant="outline" size="sm" onClick={() => loadSample("mcq")}>
@@ -749,4 +783,3 @@ function InfoRow({
     </div>
   );
 }
-

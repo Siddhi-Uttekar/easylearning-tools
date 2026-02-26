@@ -13,7 +13,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trash2, Pencil, Eye, BookOpen, Clock } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  Pencil,
+  Eye,
+  BookOpen,
+  Clock,
+  Copy,
+  Link2,
+} from "lucide-react";
 import { Toaster, toast } from "sonner";
 import {
   Dialog,
@@ -52,6 +61,18 @@ interface FlashcardSet {
   createdAt: string;
 }
 
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function publicUrl(set: FlashcardSet) {
+  return `/Flashcard/new/${slugify(set.standard)}/${slugify(set.subject)}/${slugify(set.title)}`;
+}
+
 export default function EditFlashcardPage() {
   const { setTitle } = useHeaderStore();
 
@@ -78,7 +99,7 @@ export default function EditFlashcardPage() {
         throw new Error("Failed to delete flashcard set");
       }
       setFlashcardSets((prev) =>
-        prev.filter((set) => set.id !== setToDelete.id)
+        prev.filter((set) => set.id !== setToDelete.id),
       );
       toast.success("Flashcard set deleted successfully.");
     } catch (error) {
@@ -104,7 +125,7 @@ export default function EditFlashcardPage() {
       }
       const updatedSet = await response.json();
       setFlashcardSets((prev) =>
-        prev.map((set) => (set.id === updatedSet.id ? updatedSet : set))
+        prev.map((set) => (set.id === updatedSet.id ? updatedSet : set)),
       );
       toast.success("Flashcard set updated successfully.");
     } catch (error) {
@@ -188,7 +209,7 @@ export default function EditFlashcardPage() {
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
                   <BookOpen className="h-12 w-12 text-primary/40" />
                 </div>
               )}
@@ -215,7 +236,7 @@ export default function EditFlashcardPage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="flex-grow space-y-3">
+            <CardContent className="grow space-y-3">
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="text-xs">
                   {set.standard}
@@ -238,6 +259,27 @@ export default function EditFlashcardPage() {
                   })}
                 </span>
               </div>
+
+              {set.published && (
+                <div className="flex items-center gap-1.5 rounded-lg border bg-muted/50 px-2 py-1.5 text-xs">
+                  <Link2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate flex-1 text-muted-foreground font-mono select-all">
+                    {publicUrl(set)}
+                  </span>
+                  <button
+                    title="Copy link"
+                    className="shrink-0 rounded p-0.5 hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const full = `https://easylearning.live${publicUrl(set)}`;
+                      navigator.clipboard.writeText(full);
+                      toast.success("Link copied!");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </CardContent>
 
             <CardFooter className="flex justify-between pt-3">
@@ -281,7 +323,7 @@ export default function EditFlashcardPage() {
                           onChange={(e) =>
                             setSetToEdit(
                               (prev) =>
-                                prev && { ...prev, title: e.target.value }
+                                prev && { ...prev, title: e.target.value },
                             )
                           }
                           className="col-span-3"
@@ -297,7 +339,10 @@ export default function EditFlashcardPage() {
                           onChange={(e) =>
                             setSetToEdit(
                               (prev) =>
-                                prev && { ...prev, description: e.target.value }
+                                prev && {
+                                  ...prev,
+                                  description: e.target.value,
+                                },
                             )
                           }
                           className="col-span-3"
@@ -312,7 +357,7 @@ export default function EditFlashcardPage() {
                           checked={setToEdit?.published || false}
                           onCheckedChange={(checked) =>
                             setSetToEdit(
-                              (prev) => prev && { ...prev, published: checked }
+                              (prev) => prev && { ...prev, published: checked },
                             )
                           }
                         />
@@ -378,8 +423,8 @@ export default function EditFlashcardPage() {
             No flashcard sets found
           </h3>
           <p className="text-muted-foreground max-w-md mx-auto">
-            You haven&apos;t created any flashcard sets yet. Create your first set to
-            get started.
+            You haven&apos;t created any flashcard sets yet. Create your first
+            set to get started.
           </p>
         </div>
       )}

@@ -26,11 +26,11 @@ const addLogo = (slide: any, W: number, _H: number) => {
 };
 
 // ── Portrait card dimensions (inches) ────────────────────────────────────────
-const W = 4.5;    // width  (inches)
-const H = 10.0;   // height (inches)
+const W = 4.5; // width  (inches)
+const H = 10.0; // height (inches)
 
-const BORDER_COLOR = "5BA4CF";   // light-medium blue border (matches reference)
-const BORDER_WIDTH = 6;          // pt
+const BORDER_COLOR = "5BA4CF"; // light-medium blue border (matches reference)
+const BORDER_WIDTH = 6; // pt
 const BG = "FFFFFF";
 const TEXT_DARK = "1A1A1A";
 const SOLUTION_BORDER = "4A90C4"; // blue outline of the Solution button
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       const btnW = 2.4;
       const btnH = 0.62;
       const btnX = (W - btnW) / 2;
-      const btnY = H * 0.70;
+      const btnY = H * 0.7;
 
       frontSlide.addShape("rect", {
         x: btnX,
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         x: 0.3,
         y: H * 0.06,
         w: W - 0.6,
-        h: H * 0.60,
+        h: H * 0.6,
         fontSize: 26,
         bold: false,
         color: TEXT_DARK,
@@ -274,4 +274,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
