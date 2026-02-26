@@ -61,6 +61,10 @@ const data = {
           title: "Edit Flashcard",
           url: "/dashboard/flashcard/edit-flashcard",
         },
+        {
+          title: "JSON to PPT",
+          url: "/dashboard/flashcard/json-to-ppt",
+        },
       ],
     },
     {
