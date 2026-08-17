@@ -49,3 +49,7 @@ CLAUDE.md
 .claude 
 public/uploads
 *.sh
+
+# PYQ question data — large (~50MB), deployed straight to the server
+# outside of git rather than committed. See data/pyq/README.md.
+/data/pyq

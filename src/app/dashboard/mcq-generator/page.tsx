@@ -23,7 +23,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -43,7 +45,9 @@ import {
   IconHelpCircle,
   IconEye,
   IconFilter,
+  IconSchool,
 } from "@tabler/icons-react";
+import { cleanLatex } from "@/lib/latex";
 
 interface Chapter {
   originalId: number;
@@ -62,6 +66,10 @@ interface Question {
   subject: string;
   standard: string;
   options: Option[];
+  // PYQ (previous-year-question) provenance — shown as a badge on the PPT slide
+  examTitle?: string;
+  year?: number | string;
+  paperTitle?: string;
 }
 
 interface Option {
@@ -76,6 +84,49 @@ interface ParsedQuestion {
   answer: string;
   solution: string;
   marks: string;
+}
+
+// ── PYQ catalog / raw question shapes (data/pyq/*, served by /api/pyq/*) ──
+interface PyqCatalogChapter {
+  key: string;
+  title: string;
+  questionCount: number;
+  isOutOfSyllabus?: boolean;
+}
+
+interface PyqCatalogTopic {
+  key: string;
+  title: string;
+  chapters: PyqCatalogChapter[];
+}
+
+interface PyqCatalogSubject {
+  key: string;
+  title: string;
+  topics: PyqCatalogTopic[];
+}
+
+interface PyqCatalogExam {
+  exam: string;
+  examTitle: string;
+  subjects: PyqCatalogSubject[];
+}
+
+interface RawPyqOption {
+  identifier?: string;
+  latex?: string;
+  isCorrect?: boolean;
+}
+
+interface RawPyqQuestion {
+  questionLatex?: string;
+  explanationLatex?: string;
+  chapterTitle?: string;
+  subjectTitle?: string;
+  examTitle?: string;
+  year?: number;
+  paperTitle?: string;
+  options?: RawPyqOption[];
 }
 
 export default function MCQGenerator() {
@@ -104,6 +155,18 @@ export default function MCQGenerator() {
   const [isGeneratingPPT, setIsGeneratingPPT] = useState<boolean>(false);
   const [pptError, setPptError] = useState<string>("");
   const [pptSuccess, setPptSuccess] = useState<string>("");
+
+  // PYQ exams state (separate source from the question-bank chapters above)
+  const [pyqCatalog, setPyqCatalog] = useState<PyqCatalogExam[] | null>(null);
+  const [pyqExam, setPyqExam] = useState<string>("");
+  const [pyqSubject, setPyqSubject] = useState<string>("");
+  const [pyqChapterKey, setPyqChapterKey] = useState<string>("");
+  const [pyqLoading, setPyqLoading] = useState<boolean>(false);
+  const [pyqSource, setPyqSource] = useState<{
+    examTitle: string;
+    subjectTitle: string;
+    chapterTitle: string;
+  } | null>(null);
 
   const cleanHtmlContentWithLaTeX = (
     html: string | null | undefined,
@@ -230,6 +293,80 @@ export default function MCQGenerator() {
     fetchChapters();
   }, []);
 
+  // Fetch the PYQ exam catalog (exams → subjects → chapters) on mount
+  useEffect(() => {
+    fetch("/api/pyq/catalog")
+      .then((res) => res.json())
+      .then((data: { exams: PyqCatalogExam[] }) => {
+        setPyqCatalog(data.exams || []);
+        if (data.exams?.length) setPyqExam(data.exams[0].exam);
+      })
+      .catch((err) => console.error("Failed to load PYQ catalog:", err));
+  }, []);
+
+  const pyqExamEntry = pyqCatalog?.find((e) => e.exam === pyqExam);
+  const pyqSubjectEntry = pyqExamEntry?.subjects.find(
+    (s) => s.key === pyqSubject,
+  );
+
+  // Load a PYQ chapter's questions into the same "available questions" list
+  // that the question-bank chapter picker uses, so selection / Add-to-MCQ /
+  // PPT generation all work identically regardless of source.
+  const loadPyqChapter = useCallback(async () => {
+    if (!pyqExam || !pyqSubject || !pyqChapterKey) return;
+    setPyqLoading(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/pyq/questions?exam=${encodeURIComponent(pyqExam)}&subject=${encodeURIComponent(pyqSubject)}&chapter=${encodeURIComponent(pyqChapterKey)}`,
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to load chapter");
+      }
+      const raw = (await res.json()) as RawPyqQuestion[];
+      if (!Array.isArray(raw) || raw.length === 0) {
+        throw new Error("No questions found for this chapter");
+      }
+
+      const converted: Question[] = raw.map((rq, index) => ({
+        question_id: 1_000_000 + index,
+        question_text: cleanLatex(rq.questionLatex || ""),
+        solution: rq.explanationLatex ? cleanLatex(rq.explanationLatex) : "",
+        difficulty_level: "medium",
+        chapter_name: rq.chapterTitle || "",
+        subject: rq.subjectTitle || "",
+        standard: "",
+        examTitle: rq.examTitle,
+        year: rq.year,
+        paperTitle: rq.paperTitle,
+        options: (rq.options || []).map((o, oIdx) => ({
+          option_id: 1_000_000 + index * 10 + oIdx,
+          option_text: cleanLatex(o.latex || ""),
+          is_correct: !!o.isCorrect,
+        })),
+      }));
+
+      // PYQ and question-bank chapters are mutually exclusive sources.
+      setSelectedChapters([]);
+      setOffset(0);
+      setHasMoreQuestions(false);
+      setAvailableQuestions(converted);
+      setSelectedQuestions([]);
+      setPyqSource({
+        examTitle: raw[0].examTitle || pyqExamEntry?.examTitle || "",
+        subjectTitle: raw[0].subjectTitle || "",
+        chapterTitle: raw[0].chapterTitle || "",
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load PYQ chapter",
+      );
+    } finally {
+      setPyqLoading(false);
+    }
+  }, [pyqExam, pyqSubject, pyqChapterKey, pyqExamEntry]);
+
   // Fetch questions from API
   const fetchQuestions = useCallback(async () => {
     if (selectedChapters.length === 0) return;
@@ -350,6 +487,7 @@ export default function MCQGenerator() {
 
   // Handle chapter selection
   const toggleChapterSelection = (chapter: Chapter) => {
+    setPyqSource(null); // question-bank and PYQ chapters are mutually exclusive
     setSelectedChapters((prev) => {
       // Only allow one chapter to be selected at a time
       if (prev.some((c) => c.originalId === chapter.originalId)) {
@@ -483,8 +621,16 @@ ${question.options
           question_text: pq.question,
           solution: pq.solution,
           difficulty_level: "medium", // Default for manual
-          chapter_name: sourceChapter ? sourceChapter.name : "Manual Input",
-          subject: sourceChapter ? sourceChapter.subject : "Mixed",
+          chapter_name: sourceChapter
+            ? sourceChapter.name
+            : pyqSource
+              ? pyqSource.chapterTitle
+              : "Manual Input",
+          subject: sourceChapter
+            ? sourceChapter.subject
+            : pyqSource
+              ? pyqSource.subjectTitle
+              : "Mixed",
           standard: sourceChapter ? sourceChapter.standard : "0",
           options,
         };
@@ -505,14 +651,43 @@ ${question.options
     setPptSuccess("");
 
     try {
+      const isPyqSource =
+        !sourceChapter &&
+        !!pyqSource &&
+        questionsToGenerate.some((q) => q.examTitle);
+      const pyqYears = isPyqSource
+        ? Array.from(
+            new Set(
+              questionsToGenerate
+                .map((q) => q.year)
+                .filter((y): y is number => typeof y === "number"),
+            ),
+          )
+        : [];
+      const examYearRange = pyqYears.length
+        ? pyqYears.length === 1
+          ? String(pyqYears[0])
+          : `${Math.min(...pyqYears)}–${Math.max(...pyqYears)}`
+        : undefined;
+
       const metadata = {
-        chapter: sourceChapter ? sourceChapter.name : "Manual Input",
-        subject: sourceChapter ? sourceChapter.subject : "Mixed",
+        chapter: sourceChapter
+          ? sourceChapter.name
+          : pyqSource
+            ? pyqSource.chapterTitle
+            : "Manual Input",
+        subject: sourceChapter
+          ? sourceChapter.subject
+          : pyqSource
+            ? pyqSource.subjectTitle
+            : "Mixed",
         standard: sourceChapter ? sourceChapter.standard : "N/A",
         username: "User",
         difficultyFilters:
           difficultyFilter === "all" ? "EMH" : difficultyFilter.toUpperCase(),
         totalCount: questionsToGenerate.length,
+        exam: isPyqSource ? pyqSource!.examTitle : undefined,
+        examYearRange,
       };
 
       const response = await fetch("/api/generate-ppt", {
@@ -669,6 +844,122 @@ ${question.options
                 </div>
               </CardContent>
             </Card>
+
+            {/* PYQ Exams — separate source from the question bank above */}
+            <Card className="border h-fit mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconSchool className="h-5 w-5" />
+                  PYQ Exams
+                </CardTitle>
+                <CardDescription>
+                  Load real previous-year questions by exam, subject &amp;
+                  chapter
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!pyqCatalog ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                    <IconLoader2 className="h-4 w-4 animate-spin" />
+                    Loading exams…
+                  </div>
+                ) : pyqCatalog.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No PYQ data found on the server yet.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Exam</Label>
+                      <Select
+                        value={pyqExam}
+                        onValueChange={(v) => {
+                          setPyqExam(v);
+                          setPyqSubject("");
+                          setPyqChapterKey("");
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select exam" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pyqCatalog.map((e) => (
+                            <SelectItem key={e.exam} value={e.exam}>
+                              {e.examTitle}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Subject</Label>
+                      <Select
+                        value={pyqSubject}
+                        onValueChange={(v) => {
+                          setPyqSubject(v);
+                          setPyqChapterKey("");
+                        }}
+                        disabled={!pyqExamEntry}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select subject" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pyqExamEntry?.subjects.map((s) => (
+                            <SelectItem key={s.key} value={s.key}>
+                              {s.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Chapter</Label>
+                      <Select
+                        value={pyqChapterKey}
+                        onValueChange={setPyqChapterKey}
+                        disabled={!pyqSubjectEntry}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select chapter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pyqSubjectEntry?.topics.map((t) => (
+                            <SelectGroup key={t.key}>
+                              <SelectLabel>{t.title}</SelectLabel>
+                              {t.chapters.map((c) => (
+                                <SelectItem key={c.key} value={c.key}>
+                                  {c.title} ({c.questionCount})
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      size="sm"
+                      disabled={!pyqChapterKey || pyqLoading}
+                      onClick={loadPyqChapter}
+                    >
+                      {pyqLoading ? (
+                        <>
+                          <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading…
+                        </>
+                      ) : (
+                        <>
+                          <IconSchool className="mr-2 h-4 w-4" />
+                          Load Chapter
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
           {/* Right Column - Input and Preview */}
           <div className="lg:col-span-2 space-y-6">
@@ -684,7 +975,9 @@ ${question.options
                     <CardDescription>
                       {selectedChapters.length > 0
                         ? `From: ${selectedChapters[0].name}`
-                        : "Select a chapter first"}
+                        : pyqSource
+                          ? `From: ${pyqSource.examTitle} • ${pyqSource.chapterTitle}`
+                          : "Select a chapter first"}
                     </CardDescription>
                   </div>
                   {selectedChapters.length > 0 && (
@@ -708,7 +1001,7 @@ ${question.options
                 </div>
               </CardHeader>
               <CardContent>
-                {selectedChapters.length === 0 ? (
+                {selectedChapters.length === 0 && !pyqSource ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <IconBook className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Select a chapter to load questions</p>

@@ -25,9 +25,20 @@ import {
   Trash2,
   Eye,
   BookOpen,
+  Library,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cleanLatex } from "@/lib/latex";
 
 interface Option {
   option_id: number;
@@ -44,6 +55,10 @@ interface Question {
   subject?: string;
   standard?: string;
   options: Option[];
+  // PYQ (previous-year-question) provenance — rendered as a badge on the slide
+  examTitle?: string;
+  year?: number | string;
+  paperTitle?: string;
 }
 
 interface Metadata {
@@ -54,6 +69,106 @@ interface Metadata {
   difficultyFilters?: string;
   totalCount?: number;
   title?: string;
+  exam?: string;
+  examYearRange?: string;
+}
+
+// Raw scraped PYQ question shape (e.g. mhtcet_pyq per-chapter exports)
+interface RawPyqOption {
+  identifier?: string;
+  latex?: string;
+  isCorrect?: boolean;
+}
+
+interface RawPyqQuestion {
+  questionLatex?: string;
+  explanationLatex?: string;
+  difficulty?: string | null;
+  chapterTitle?: string;
+  subjectTitle?: string;
+  examTitle?: string;
+  year?: number;
+  paperTitle?: string;
+  options?: RawPyqOption[];
+}
+
+function isRawPyqQuestion(item: unknown): item is RawPyqQuestion {
+  if (!item || typeof item !== "object") return false;
+  const q = item as Record<string, unknown>;
+  return (
+    typeof q.questionLatex === "string" &&
+    Array.isArray(q.options) &&
+    q.options.length > 0 &&
+    typeof (q.options[0] as Record<string, unknown>)?.latex === "string"
+  );
+}
+
+function convertPyqQuestions(raw: RawPyqQuestion[]): McqJsonData {
+  const questions: Question[] = raw.map((rq, idx) => ({
+    question_id: idx + 1,
+    question_text: cleanLatex(rq.questionLatex || ""),
+    solution: rq.explanationLatex
+      ? cleanLatex(rq.explanationLatex)
+      : undefined,
+    difficulty_level: rq.difficulty || undefined,
+    chapter_name: rq.chapterTitle,
+    subject: rq.subjectTitle,
+    examTitle: rq.examTitle,
+    year: rq.year,
+    paperTitle: rq.paperTitle,
+    options: (rq.options || []).map((o, oIdx) => ({
+      option_id: oIdx + 1,
+      option_text: cleanLatex(o.latex || ""),
+      is_correct: !!o.isCorrect,
+    })),
+  }));
+
+  const first = raw[0];
+  const years = raw
+    .map((r) => r.year)
+    .filter((y): y is number => typeof y === "number");
+  const examYearRange = years.length
+    ? Math.min(...years) === Math.max(...years)
+      ? String(Math.min(...years))
+      : `${Math.min(...years)}–${Math.max(...years)}`
+    : undefined;
+
+  return {
+    questions,
+    metadata: {
+      chapter: first?.chapterTitle,
+      subject: first?.subjectTitle,
+      exam: first?.examTitle,
+      examYearRange,
+      totalCount: questions.length,
+    },
+  };
+}
+
+// ── PYQ catalog (from /api/pyq/catalog) — powers the "Browse PYQs" tab ──
+interface PyqCatalogChapter {
+  key: string;
+  title: string;
+  questionCount: number;
+  isOutOfSyllabus?: boolean;
+}
+
+interface PyqCatalogTopic {
+  key: string;
+  title: string;
+  chapters: PyqCatalogChapter[];
+}
+
+interface PyqCatalogSubject {
+  key: string;
+  title: string;
+  topics: PyqCatalogTopic[];
+}
+
+interface PyqCatalogExam {
+  exam: string;
+  examTitle: string;
+  subjects: PyqCatalogSubject[];
 }
 
 // Simple flashcard format: [{front, back}]
@@ -129,7 +244,9 @@ export default function JsonToPptPage() {
     setTitle("JSON → PPT");
   }, [setTitle]);
 
-  const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "paste" | "browse">(
+    "upload",
+  );
   const [jsonText, setJsonText] = useState("");
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat>(null);
   const [mcqData, setMcqData] = useState<McqJsonData | null>(null);
@@ -145,6 +262,63 @@ export default function JsonToPptPage() {
   const [fcTitle, setFcTitle] = useState("");
   const [fcSubject, setFcSubject] = useState("");
   const [fcStandard, setFcStandard] = useState("");
+
+  // Browse PYQs tab
+  const [pyqCatalog, setPyqCatalog] = useState<PyqCatalogExam[] | null>(null);
+  const [pyqCatalogError, setPyqCatalogError] = useState("");
+  const [pyqExam, setPyqExam] = useState("");
+  const [pyqSubject, setPyqSubject] = useState("");
+  const [pyqChapter, setPyqChapter] = useState("");
+  const [pyqLoading, setPyqLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/pyq/catalog")
+      .then((res) => res.json())
+      .then((data: { exams: PyqCatalogExam[] }) => {
+        setPyqCatalog(data.exams || []);
+        if (data.exams?.length) setPyqExam(data.exams[0].exam);
+      })
+      .catch(() =>
+        setPyqCatalogError("Couldn't load the PYQ catalog from the server."),
+      );
+  }, []);
+
+  const examEntry = pyqCatalog?.find((e) => e.exam === pyqExam);
+  const subjectEntry = examEntry?.subjects.find((s) => s.key === pyqSubject);
+
+  const loadPyqChapter = useCallback(async () => {
+    if (!pyqExam || !pyqSubject || !pyqChapter) return;
+    setPyqLoading(true);
+    setParseError("");
+    try {
+      const res = await fetch(
+        `/api/pyq/questions?exam=${encodeURIComponent(pyqExam)}&subject=${encodeURIComponent(pyqSubject)}&chapter=${encodeURIComponent(pyqChapter)}`,
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to load chapter");
+      }
+      const raw = (await res.json()) as unknown[];
+      if (!Array.isArray(raw) || raw.length === 0 || !isRawPyqQuestion(raw[0])) {
+        throw new Error("Unexpected chapter data format");
+      }
+      const converted = convertPyqQuestions(raw as RawPyqQuestion[]);
+      setMcqData(converted);
+      setFlashcardData(null);
+      setDetectedFormat("mcq");
+      setJsonText("");
+      setFileName("");
+      toast.success(
+        `Loaded ${converted.metadata?.chapter} — ${raw.length} questions from ${converted.metadata?.exam}.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load chapter",
+      );
+    } finally {
+      setPyqLoading(false);
+    }
+  }, [pyqExam, pyqSubject, pyqChapter]);
 
   const parseJson = useCallback((text: string) => {
     setParseError("");
@@ -169,6 +343,41 @@ export default function JsonToPptPage() {
         return;
       }
 
+      // Detect raw PYQ export: bare array of scraped questions
+      // (e.g. mhtcet_pyq per-chapter files: [{ questionLatex, options:[{latex,isCorrect}], examTitle, year, ... }])
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        isRawPyqQuestion(parsed[0])
+      ) {
+        const converted = convertPyqQuestions(parsed as RawPyqQuestion[]);
+        setMcqData(converted);
+        setDetectedFormat("mcq");
+        toast.success(
+          `Detected PYQ format (${converted.metadata?.exam || "exam"}) — ${parsed.length} questions loaded.`,
+        );
+        return;
+      }
+
+      // Detect raw PYQ export wrapped in {..., questions:[...]}
+      // (e.g. mhtcet_pyq data/questions.json full dumps)
+      if (
+        parsed.questions &&
+        Array.isArray(parsed.questions) &&
+        parsed.questions.length > 0 &&
+        isRawPyqQuestion(parsed.questions[0])
+      ) {
+        const converted = convertPyqQuestions(
+          parsed.questions as RawPyqQuestion[],
+        );
+        setMcqData(converted);
+        setDetectedFormat("mcq");
+        toast.success(
+          `Detected PYQ format (${converted.metadata?.exam || "exam"}) — ${parsed.questions.length} questions loaded.`,
+        );
+        return;
+      }
+
       // Detect MCQ format: object with questions array
       if (parsed.questions && Array.isArray(parsed.questions)) {
         setMcqData(parsed as McqJsonData);
@@ -180,7 +389,7 @@ export default function JsonToPptPage() {
       }
 
       setParseError(
-        'Unknown format. Expected [{front, back}] for flashcards or {"questions":[...]} for MCQs.',
+        'Unknown format. Expected [{front, back}] for flashcards, {"questions":[...]} for MCQs, or a scraped PYQ export.',
       );
     } catch {
       setParseError("Invalid JSON. Please check the format.");
@@ -345,15 +554,16 @@ export default function JsonToPptPage() {
             JSON to PowerPoint
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Supports two formats:{" "}
+            Supports{" "}
             <span className="font-medium text-foreground">
               [{"{front, back}"}]
             </span>{" "}
-            flashcards or{" "}
+            flashcards,{" "}
             <span className="font-medium text-foreground">
               {"{questions:[...]}"}
             </span>{" "}
-            MCQs. Format is auto-detected.
+            MCQs, or scraped PYQ exports (exam name & year shown on each
+            slide). Format is auto-detected.
           </p>
         </div>
         <div className="flex gap-2">
@@ -366,6 +576,11 @@ export default function JsonToPptPage() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => loadSample("mcq")}>
             MCQ Sample
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/samples/MHT_CET_PYQ_Demo_EasyLearning.pptx" download>
+              <Download size={13} className="mr-1" /> Demo PYQ PPT
+            </a>
           </Button>
         </div>
       </div>
@@ -383,7 +598,9 @@ export default function JsonToPptPage() {
             <CardContent>
               <Tabs
                 value={activeTab}
-                onValueChange={(v) => setActiveTab(v as "upload" | "paste")}
+                onValueChange={(v) =>
+                  setActiveTab(v as "upload" | "paste" | "browse")
+                }
               >
                 <TabsList className="mb-4">
                   <TabsTrigger value="upload">
@@ -393,6 +610,10 @@ export default function JsonToPptPage() {
                   <TabsTrigger value="paste">
                     <FileJson size={14} className="mr-2" />
                     Paste JSON
+                  </TabsTrigger>
+                  <TabsTrigger value="browse">
+                    <Library size={14} className="mr-2" />
+                    Browse PYQs
                   </TabsTrigger>
                 </TabsList>
 
@@ -444,6 +665,115 @@ export default function JsonToPptPage() {
                       className="font-mono text-xs min-h-[220px] resize-none"
                     />
                   </div>
+                </TabsContent>
+
+                <TabsContent value="browse">
+                  {pyqCatalogError ? (
+                    <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg p-3">
+                      <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                      {pyqCatalogError}
+                    </div>
+                  ) : !pyqCatalog ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+                      <Loader2 size={16} className="animate-spin" />
+                      Loading PYQ catalog…
+                    </div>
+                  ) : pyqCatalog.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-6 text-center">
+                      No PYQ data found on the server yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Exam</Label>
+                          <Select
+                            value={pyqExam}
+                            onValueChange={(v) => {
+                              setPyqExam(v);
+                              setPyqSubject("");
+                              setPyqChapter("");
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select exam" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {pyqCatalog.map((e) => (
+                                <SelectItem key={e.exam} value={e.exam}>
+                                  {e.examTitle}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Subject</Label>
+                          <Select
+                            value={pyqSubject}
+                            onValueChange={(v) => {
+                              setPyqSubject(v);
+                              setPyqChapter("");
+                            }}
+                            disabled={!examEntry}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {examEntry?.subjects.map((s) => (
+                                <SelectItem key={s.key} value={s.key}>
+                                  {s.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Chapter</Label>
+                          <Select
+                            value={pyqChapter}
+                            onValueChange={setPyqChapter}
+                            disabled={!subjectEntry}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select chapter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subjectEntry?.topics.map((t) => (
+                                <SelectGroup key={t.key}>
+                                  <SelectLabel>{t.title}</SelectLabel>
+                                  {t.chapters.map((c) => (
+                                    <SelectItem key={c.key} value={c.key}>
+                                      {c.title} ({c.questionCount})
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full"
+                        variant="secondary"
+                        disabled={!pyqChapter || pyqLoading}
+                        onClick={loadPyqChapter}
+                      >
+                        {pyqLoading ? (
+                          <>
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                            Loading…
+                          </>
+                        ) : (
+                          <>
+                            <Library size={14} className="mr-2" />
+                            Load Chapter
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
 
@@ -559,6 +889,9 @@ export default function JsonToPptPage() {
                   <TabsTrigger value="mcq" className="text-xs">
                     MCQ Format
                   </TabsTrigger>
+                  <TabsTrigger value="pyq" className="text-xs">
+                    PYQ Format
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="flashcard">
                   <ScrollArea className="h-32 rounded-md">
@@ -591,6 +924,29 @@ export default function JsonToPptPage() {
   ]
 }`}</pre>
                   </ScrollArea>
+                </TabsContent>
+                <TabsContent value="pyq">
+                  <ScrollArea className="h-32 rounded-md">
+                    <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{`[
+  {
+    "questionLatex": "Question with $x^2$ latex...",
+    "explanationLatex": "Explanation...",
+    "chapterTitle": "Mechanics",
+    "subjectTitle": "Physics",
+    "examTitle": "MHT CET",
+    "year": 2026,
+    "options": [
+      { "identifier": "A", "latex": "Option A", "isCorrect": true },
+      { "identifier": "B", "latex": "Option B", "isCorrect": false }
+    ]
+  }
+]`}</pre>
+                  </ScrollArea>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Drop in a per-chapter export as-is (a bare array, or{" "}
+                    {'{"questions":[...]}'}). LaTeX is auto-cleaned and the
+                    exam name + year appear on every slide.
+                  </p>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -638,14 +994,29 @@ export default function JsonToPptPage() {
                         label="Subject"
                         value={mcqData?.metadata?.subject || "—"}
                       />
-                      <InfoRow
-                        label="Standard"
-                        value={
-                          mcqData?.metadata?.standard
-                            ? `Class ${mcqData.metadata.standard}`
-                            : "—"
-                        }
-                      />
+                      {mcqData?.metadata?.exam ? (
+                        <>
+                          <InfoRow
+                            label="Exam"
+                            value={mcqData.metadata.exam}
+                          />
+                          {mcqData.metadata.examYearRange && (
+                            <InfoRow
+                              label="Years"
+                              value={mcqData.metadata.examYearRange}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <InfoRow
+                          label="Standard"
+                          value={
+                            mcqData?.metadata?.standard
+                              ? `Class ${mcqData.metadata.standard}`
+                              : "—"
+                          }
+                        />
+                      )}
                       <InfoRow
                         label="Questions"
                         value={String(itemCount)}
@@ -713,14 +1084,18 @@ export default function JsonToPptPage() {
                                 {q.question_text}
                               </span>
                             </div>
-                            {q.difficulty_level && (
-                              <Badge
-                                variant="secondary"
-                                className="mt-1 text-[10px]"
-                              >
-                                {q.difficulty_level}
-                              </Badge>
-                            )}
+                            <div className="mt-1 flex gap-1 flex-wrap">
+                              {q.examTitle && (
+                                <Badge className="text-[10px] bg-blue-600 hover:bg-blue-600">
+                                  {q.examTitle} {q.year || ""}
+                                </Badge>
+                              )}
+                              {q.difficulty_level && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {q.difficulty_level}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         ))}
                     {itemCount > 10 && (
