@@ -1,4 +1,3 @@
-syntax=docker/dockerfile:1
 
 # ── Base ─────────────────────────────────────────────────────────────
 FROM node:22-slim AS base
@@ -34,11 +33,11 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       chromium \
-       fonts-liberation \
-       ca-certificates \
-       openssl \
-       curl \
+  chromium \
+  fonts-liberation \
+  ca-certificates \
+  openssl \
+  curl \
   && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
