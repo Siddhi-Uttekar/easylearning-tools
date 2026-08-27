@@ -4,6 +4,14 @@
 FROM node:22-slim AS base
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
+# Coolify/BuildKit injects NODE_ENV=production into the build environment,
+# which makes `pnpm install` skip devDependencies (typescript, tailwindcss,
+# @types/*, eslint*) — but next.config.ts requires typescript just to load,
+# and `next build` needs the rest. Force development here so installs pull
+# everything; the runner stage below sets NODE_ENV=production for runtime,
+# and `next build` internally forces production mode for the app itself
+# regardless of this value.
+ENV NODE_ENV=development
 
 # ── Dependencies ─────────────────────────────────────────────────────
 FROM base AS deps
