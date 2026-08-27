@@ -1,8 +1,14 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 generator client {
-  provider = "prisma-client-js"
-  
+  provider      = "prisma-client-js"
+  // Explicit instead of relying on auto-detection: the `builder` Docker
+  // stage doesn't have `openssl` installed, so Prisma's libssl detection
+  // silently guessed wrong (defaulted to openssl-1.1.x) and generated an
+  // engine binary that didn't match the `runner` stage's actual OpenSSL
+  // 3.0.x (debian:bookworm-based node:22-slim), causing a runtime
+  // PrismaClientInitializationError on every query.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
