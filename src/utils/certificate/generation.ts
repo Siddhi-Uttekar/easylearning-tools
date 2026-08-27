@@ -2,6 +2,11 @@
 import puppeteer from "puppeteer";
 import { CertificateData } from "@/types/certificates";
 
+// Configurable so this works both on the current server (snap-installed
+// Chromium) and in a Docker container (apt-installed Chromium) — see Dockerfile.
+const CHROMIUM_EXECUTABLE_PATH =
+  process.env.PUPPETEER_EXECUTABLE_PATH || "/snap/bin/chromium";
+
 export function generateCertificateHTML(data: CertificateData): string {
   const { student, event, certificateType } = data;
   const getMedalEmoji = () => {
@@ -309,7 +314,7 @@ export async function generatePDF(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: "/snap/bin/chromium",
+      executablePath: CHROMIUM_EXECUTABLE_PATH,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -332,7 +337,7 @@ export async function generatePNG(html: string): Promise<Buffer> {
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: "/snap/bin/chromium",
+      executablePath: CHROMIUM_EXECUTABLE_PATH,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });

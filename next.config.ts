@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Lean, self-contained production build for the Docker image (see Dockerfile).
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -13,6 +15,13 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "tools.easylearning.live",
         pathname: "/uploads/**",
+      },
+      {
+        // Public-read SeaweedFS S3 bucket — PYQ diagrams + re-hosted question
+        // bank images (see data/pyq/README.md). No credentials needed to fetch.
+        protocol: "https",
+        hostname: "s3-xzopnmtqzetpcjcdqpv0s3j8.shubhamjha.live",
+        pathname: "/pyq-images/**",
       },
     ],
   },

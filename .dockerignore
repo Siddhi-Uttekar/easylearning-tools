@@ -1,0 +1,20 @@
+node_modules
+.next
+.git
+
+# Large one-off migration artifacts — never needed in the image
+*.sql
+data/
+/*.pptx
+/*.svg
+
+# Local env / secrets — Coolify injects these at runtime instead
+.env
+.env.*
+!.env.example
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+prisma/dev.db
