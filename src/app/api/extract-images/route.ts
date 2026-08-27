@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import cuid from "cuid";
 

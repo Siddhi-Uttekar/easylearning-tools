@@ -4,17 +4,16 @@
 FROM node:22-slim AS base
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
-# Coolify/BuildKit injects NODE_ENV=production into the build environment,
-# which makes `pnpm install` skip devDependencies (typescript, tailwindcss,
-# @types/*, eslint*) — but next.config.ts requires typescript just to load,
-# and `next build` needs the rest. Force development here so installs pull
-# everything; the runner stage below sets NODE_ENV=production for runtime,
-# and `next build` internally forces production mode for the app itself
-# regardless of this value.
-ENV NODE_ENV=development
 
 # ── Dependencies ─────────────────────────────────────────────────────
 FROM base AS deps
+# Coolify injects its "Available at Buildtime" env vars (including
+# NODE_ENV=production) as ARG/ENV right after each FROM line, which makes
+# `pnpm install` skip devDependencies (typescript, tailwindcss, @types/*,
+# eslint*) — but next.config.ts requires typescript just to load, and
+# `next build` needs the rest. Re-override it here, after Coolify's
+# injection point, so it's the last word before install actually runs.
+ENV NODE_ENV=development
 # Skip Puppeteer's bundled Chromium download here — the runtime image
 # installs Chromium via apt instead (see the `runner` stage below).
 ENV PUPPETEER_SKIP_DOWNLOAD=true
@@ -28,7 +27,16 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
-RUN pnpm run build
+# `next build` itself needs NODE_ENV=production — this is the opposite of
+# the `deps` stage above. Building with it unset/development trips a real
+# Next.js bug where the auto-generated /404 and /500 fallback pages fail
+# with "Error: <Html> should not be imported outside of pages/_document",
+# even in a bare app-router project with zero next/document usage
+# (reproduced locally down to a stock layout.tsx + page.tsx; see
+# https://github.com/vercel/next.js/discussions/77262 for the same report
+# from many other projects). devDependencies are already installed at
+# this point from the `deps` stage, so this doesn't reintroduce that issue.
+RUN NODE_ENV=production pnpm run build
 
 # ── Runtime ──────────────────────────────────────────────────────────
 FROM node:22-slim AS runner

@@ -5,7 +5,7 @@ import path from "path";
 import cuid from "cuid";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(request: NextRequest, context: any) {
