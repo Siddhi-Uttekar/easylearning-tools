@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 
 # ── Base ─────────────────────────────────────────────────────────────
 FROM node:22-slim AS base
@@ -55,10 +56,9 @@ RUN mkdir -p data/pyq \
   && tar -xzf /tmp/pyq-data.tar.gz -C data/pyq \
   && rm /tmp/pyq-data.tar.gz
 
-# Runs as root (simplest option here) — Coolify's /app/prisma volume mount
-# (see README note below) otherwise needs its ownership fixed on every
-# container start for a non-root user to write the SQLite file into it.
-# Docker's container boundary is still the isolation layer either way.
+# Runs as root (simplest option here). Prisma now points at Postgres
+# (NEW_PLAIN_DB) rather than a local SQLite file, so there's no persistent
+# volume or local-write-permission concern driving this either way anymore.
 
 # Next.js standalone output — see next.config.ts (output: "standalone").
 # NOTE: we deliberately use the full `node_modules` from `builder` here
@@ -79,7 +79,6 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 
-# Applies pending Prisma migrations to the SQLite file (creating it on
-# first run) before starting the server. See the README note below about
-# mounting /app/prisma as a persistent volume in Coolify.
+# Applies any pending Prisma migrations against Postgres (idempotent — a
+# no-op once already applied) before starting the server.
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy; node server.js"]
