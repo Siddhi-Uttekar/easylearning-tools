@@ -43,6 +43,13 @@ FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+# Docker auto-injects HOSTNAME=<container-id> into every container, and the
+# Next.js standalone server (server.js: `process.env.HOSTNAME || '0.0.0.0'`)
+# binds to whatever HOSTNAME resolves to instead of falling back to 0.0.0.0
+# — so it ends up listening on an address Coolify's reverse proxy can't
+# reach, even though the process itself starts fine ("Ready in ...ms" in
+# the logs). Force it back to all-interfaces explicitly.
+ENV HOSTNAME=0.0.0.0
 # Puppeteer (certificate PDF/PNG generation) uses this apt-installed
 # Chromium instead of downloading its own — see src/utils/certificate/generation.ts.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
