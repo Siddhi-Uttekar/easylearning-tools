@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { promises as fs } from "fs";
-import path from "path";
 import cuid from "cuid";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
+import { uploadToS3 } from "@/lib/s3";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(request: NextRequest, context: any) {
@@ -177,13 +176,7 @@ export async function PATCH(request: NextRequest, context: any) {
         if (card.cardType === "image" && card.dataUrl) {
           const buffer = Buffer.from(card.dataUrl.split(",")[1], "base64");
           const imageName = `${cuid()}.png`;
-          const imagePath = path.join(
-            process.cwd(),
-            "public",
-            "uploads",
-            imageName,
-          );
-          await fs.writeFile(imagePath, buffer);
+          await uploadToS3(buffer, imageName, "image/png");
           newCards.push({
             slideNumber: card.slideNumber,
             imageName,

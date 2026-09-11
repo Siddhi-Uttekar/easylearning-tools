@@ -14,6 +14,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { getImageUrl } from "@/lib/images";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Flashcard {
@@ -48,11 +49,11 @@ function FlipCard({ front, back }: { front: Flashcard; back: Flashcard }) {
 
   const frontSrc =
     front.cardType !== "text" && front.imageName
-      ? `/uploads/${front.imageName}`
+      ? getImageUrl(front.imageName)
       : null;
   const backSrc =
     back.cardType !== "text" && back.imageName
-      ? `/uploads/${back.imageName}`
+      ? getImageUrl(back.imageName)
       : null;
 
   return (

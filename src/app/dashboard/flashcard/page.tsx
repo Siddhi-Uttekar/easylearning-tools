@@ -48,6 +48,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
+import { getImageUrl } from "@/lib/images";
 
 interface FlashcardSet {
   id: string;
@@ -203,7 +204,7 @@ export default function EditFlashcardPage() {
             <div className="h-40 bg-muted relative overflow-hidden rounded-t-xl">
               {set.thumbnail ? (
                 <Image
-                  src={`/uploads/${set.thumbnail}`}
+                  src={getImageUrl(set.thumbnail)}
                   alt={set.title}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"

@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { getImageUrl } from "@/lib/images";
 
 interface Flashcard {
   slideNumber: number;
@@ -87,13 +88,13 @@ function FlashcardItem({
     front.cardType === "text"
       ? null
       : (front._dataUrl ??
-        (front.imageName ? `/uploads/${front.imageName}` : null));
+        (front.imageName ? getImageUrl(front.imageName) : null));
 
   const backSrc =
     back.cardType === "text"
       ? null
       : (back._dataUrl ??
-        (back.imageName ? `/uploads/${back.imageName}` : null));
+        (back.imageName ? getImageUrl(back.imageName) : null));
 
   return (
     <div className="relative" style={{ width: CARD_DISPLAY_WIDTH }}>
@@ -397,7 +398,7 @@ export default function FlashcardSetPage() {
       });
       if (!replaceRes.ok) throw new Error("Failed to save cards");
 
-      // 2. add new image cards (server saves to /public/uploads/)
+      // 2. add new image cards (server uploads them to S3)
       if (newImageCards.length) {
         const addRes = await fetch(`/api/flashcard/${id}`, {
           method: "PATCH",
@@ -746,7 +747,7 @@ export default function FlashcardSetPage() {
               {flashcardSet.thumbnail && (
                 <div className="aspect-video relative overflow-hidden rounded-lg">
                   <img
-                    src={`/uploads/${flashcardSet.thumbnail}`}
+                    src={getImageUrl(flashcardSet.thumbnail)}
                     alt={flashcardSet.title}
                     className="object-cover w-full h-full"
                   />

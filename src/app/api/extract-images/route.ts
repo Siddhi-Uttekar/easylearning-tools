@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { uploadToS3 } from "@/lib/s3";
 import { Prisma } from "@prisma/client";
 import cuid from "cuid";
 
@@ -24,32 +23,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const savedImages = [];
-    for (const image of images) {
-        const { slideNumber, dataUrl, type } = image;
-        
-        if(!dataUrl) continue;
+    // Uploads go to object storage, not public/uploads/ — the container
+    // filesystem is ephemeral, so anything written there is lost on redeploy.
+    // Run them concurrently; `map` keeps the original slide order.
+    const savedImages = await Promise.all(
+      images
+        .filter((image) => image?.dataUrl)
+        .map(async (image) => {
+          const { slideNumber, dataUrl, type } = image;
 
-        const buffer = Buffer.from(dataUrl.split(",")[1], "base64");
-        const imageName = `${cuid()}.png`;
-        const imagePath = path.join(process.cwd(), "public", "uploads", imageName);
+          const buffer = Buffer.from(dataUrl.split(",")[1], "base64");
+          const imageName = `${cuid()}.png`;
 
-        await fs.writeFile(imagePath, buffer);
+          await uploadToS3(buffer, imageName, "image/png");
 
-        savedImages.push({
+          return {
             slideNumber,
             imageName,
-            type
-        });
-    }
-    
+            type,
+          };
+        })
+    );
+
     let thumbnailId: string | null = null;
     if (thumbnail) {
         const buffer = Buffer.from(thumbnail.split(",")[1], "base64");
         const imageName = `${cuid()}.png`;
-        const imagePath = path.join(process.cwd(), "public", "uploads", imageName);
 
-        await fs.writeFile(imagePath, buffer);
+        await uploadToS3(buffer, imageName, "image/png");
         thumbnailId = imageName;
     }
 
